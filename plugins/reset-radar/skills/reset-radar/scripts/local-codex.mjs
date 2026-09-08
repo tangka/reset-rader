@@ -3,6 +3,23 @@ import { resolveCodexRuntime } from './codex-runtime.mjs';
 
 const MAX_OUTPUT_BYTES = 1024 * 1024;
 
+function readerEnvironment(environment, platform) {
+  const env = { ...environment };
+  if (platform === 'win32') {
+    // Windows names are case-insensitive; prefer explicit PATH, including an empty value.
+    const aliases = Object.keys(env).filter((key) => key.toUpperCase() === 'PATH').sort();
+    const selected = aliases.includes('PATH') ? 'PATH' : aliases[0];
+    const value = env[selected];
+    for (const key of aliases) delete env[key];
+    if (selected !== undefined) env.PATH = value;
+  }
+  for (const key of Object.keys(env)) {
+    const name = platform === 'win32' ? key.toUpperCase() : key;
+    if (name === 'RESET_RADAR_API_KEY' || name === 'RESET_RADAR_API_KEY_FILE') delete env[key];
+  }
+  return env;
+}
+
 function localError(code) {
   const messages = {
     aborted: 'Local Codex quota lookup was cancelled.',
@@ -19,7 +36,7 @@ function localError(code) {
 /** Read local account quotas without opening a session, model turn, or authentication flow. */
 export async function readLocalCodexRateLimits({
   codexCommand, timeoutMs = 15000, signal, spawnImpl = spawn,
-  resolveImpl = resolveCodexRuntime, environment = process.env,
+  resolveImpl = resolveCodexRuntime, environment = process.env, platform = process.platform,
 } = {}) {
   if (signal?.aborted) return Promise.reject(localError('aborted'));
   if ((codexCommand !== undefined && (typeof codexCommand !== 'string' || !codexCommand))
@@ -31,7 +48,7 @@ export async function readLocalCodexRateLimits({
     const timeout = AbortSignal.timeout(Math.ceil(timeoutMs));
     try {
       const discoverySignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
-      ({ command: codexCommand } = await resolveImpl({ environment, signal: discoverySignal }));
+      ({ command: codexCommand } = await resolveImpl({ environment, platform, signal: discoverySignal }));
       discoverySignal.throwIfAborted();
     } catch (error) {
       if (signal?.aborted) throw localError('aborted');
@@ -44,11 +61,7 @@ export async function readLocalCodexRateLimits({
   const remainingMs = timeoutMs - (Date.now() - startedAt);
   if (remainingMs <= 0) throw localError('timeout');
   return new Promise((resolve, reject) => {
-    const pathKey = Object.keys(environment).find((key) => key.toUpperCase() === 'PATH');
-    const env = { ...environment, PATH: pathKey ? environment[pathKey] : undefined };
-    if (pathKey && pathKey !== 'PATH') delete env[pathKey];
-    delete env.RESET_RADAR_API_KEY;
-    delete env.RESET_RADAR_API_KEY_FILE;
+    const env = readerEnvironment(environment, platform);
     let child;
     try {
       child = spawnImpl(codexCommand, ['app-server', '--stdio'], {
