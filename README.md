@@ -13,16 +13,18 @@
 
 ## 安装
 
-### 从 Git 仓库安装（仓库发布后）
+### 从 GitHub 安装
 
-将下面的 `仓库的Git地址` 替换为作者实际发布的仓库地址，不要原样执行占位内容。当前仓库尚未公开发布。
+在终端执行以下命令：
 
 ```bash
-codex plugin marketplace add "仓库的Git地址"
+codex plugin marketplace add https://github.com/tangka/reset-rader.git
 codex plugin add reset-radar@reset-radar
 ```
 
-这使用 [Codex 官方 marketplace 安装命令](https://learn.chatgpt.com/docs/developer-commands#codex-plugin-marketplace)，不需要复制 Skill 文件或运行远程安装脚本。私有仓库还需要作者授权及本机 Git 访问权限。
+项目仓库为 [tangka/reset-rader](https://github.com/tangka/reset-rader)，插件与 marketplace 的安装标识均为 `reset-radar`。仓库公开，会员接口仍需要你自己的 Key。
+
+这使用 [Codex 官方 marketplace 安装命令](https://learn.chatgpt.com/docs/developer-commands#codex-plugin-marketplace)，不需要复制 Skill 文件或运行远程安装脚本。
 
 ### 从收到的本地目录安装
 
