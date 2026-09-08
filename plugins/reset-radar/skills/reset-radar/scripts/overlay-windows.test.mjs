@@ -19,12 +19,108 @@ test('native card keeps state and command paths inside its selected directory', 
   assert.throws(() => windowsOverlayPaths('C:/state','../../bad'));
 });
 
-test('native card accepts the Windows PowerShell BOM on an explicit refresh command', async () => {
+function commandFixture(entries = []) {
+  const files = new Map(entries);
+  const claims = [];
+  const reads = [];
   const removed = [];
-  assert.equal(await takeRefreshCommand('C:/state/command.json', {
-    read:async () => '\uFEFF{"type":"refresh"}', remove:async (path) => removed.push(path),
+  const missing = () => Object.assign(new Error('missing command'),{code:'ENOENT'});
+  const io = {
+    async claim(source, destination) {
+      if (!files.has(source)) throw missing();
+      const value = files.get(source);
+      files.delete(source);
+      files.set(destination,value);
+      claims.push({source,destination});
+    },
+    async read(path) {
+      reads.push(path);
+      if (!files.has(path)) throw missing();
+      return files.get(path);
+    },
+    async remove(path) {
+      removed.push(path);
+      if (!files.delete(path)) throw missing();
+    },
+  };
+  return {files,claims,reads,removed,io};
+}
+
+test('native card accepts the Windows PowerShell BOM on an explicit refresh command', async () => {
+  const path = 'C:/state/command.json';
+  const f = commandFixture([[path,'\uFEFF{"type":"refresh"}']]);
+  assert.equal(await takeRefreshCommand(path,f.io),true);
+  assert.equal(f.claims.length,1);
+  assert.equal(f.claims[0].source,path);
+  const claimed = f.claims[0].destination;
+  assert.ok(claimed.startsWith(`${path}.`));
+  assert.match(claimed,/\.claimed$/);
+  assert.deepEqual(f.reads,[claimed]);
+  assert.deepEqual(f.removed,[claimed]);
+  assert.equal(f.files.size,0);
+});
+
+test('an absent claim does not read or delete a click arriving immediately afterward', async () => {
+  const path = 'C:/state/command.json';
+  const command = '{"type":"refresh"}';
+  const f = commandFixture();
+  assert.equal(await takeRefreshCommand(path,{
+    ...f.io,
+    async claim(source,destination) {
+      try { await f.io.claim(source,destination); } catch (error) {
+        f.files.set(path,command); // A click arrives after the atomic rename found no source.
+        throw error;
+      }
+    },
+  }),false);
+  assert.deepEqual([...f.files],[[path,command]]);
+  assert.deepEqual(f.reads,[]);
+  assert.deepEqual(f.removed,[]);
+  assert.equal(await takeRefreshCommand(path,f.io),true);
+  assert.equal(f.files.size,0);
+});
+
+test('claim cleanup preserves a newer command and the next poll can consume it', async () => {
+  const path = 'C:/state/command.json';
+  const newer = '{"type":"refresh","sequence":2}';
+  const f = commandFixture([[path,'{"type":"refresh","sequence":1}']]);
+  assert.equal(await takeRefreshCommand(path,{
+    ...f.io,
+    async claim(source,destination) {
+      await f.io.claim(source,destination);
+      f.files.set(path,newer); // The renderer publishes another click after ownership transfers.
+    },
   }),true);
-  assert.deepEqual(removed,['C:/state/command.json']);
+  assert.deepEqual([...f.files],[[path,newer]]);
+  assert.deepEqual(f.reads,[f.claims[0].destination]);
+  assert.deepEqual(f.removed,[f.claims[0].destination]);
+  assert.equal(await takeRefreshCommand(path,f.io),true);
+  assert.equal(f.files.size,0);
+  assert.notEqual(f.claims[0].destination,f.claims[1].destination);
+});
+
+test('malformed or unsupported commands remove only the claimed file', async () => {
+  const path = 'C:/state/command.json';
+  for (const content of ['not-json','{"type":"unsupported"}']) {
+    const f = commandFixture([[path,content]]);
+    assert.equal(await takeRefreshCommand(path,f.io),false);
+    assert.equal(f.files.size,0);
+    assert.deepEqual(f.removed,[f.claims[0].destination]);
+    assert.deepEqual(f.reads,[f.claims[0].destination]);
+  }
+});
+
+test('claim permission failures propagate without reading or deleting the command', async () => {
+  const path = 'C:/state/command.json';
+  const command = '{"type":"refresh"}';
+  const f = commandFixture([[path,command]]);
+  await assert.rejects(takeRefreshCommand(path,{
+    ...f.io,
+    claim:async () => { throw Object.assign(new Error('claim denied'),{code:'EACCES'}); },
+  }),{code:'EACCES'});
+  assert.deepEqual([...f.files],[[path,command]]);
+  assert.deepEqual(f.reads,[]);
+  assert.deepEqual(f.removed,[]);
 });
 
 test('native card starts a hidden PowerShell host, refreshes through Node, and cleans up', async () => {

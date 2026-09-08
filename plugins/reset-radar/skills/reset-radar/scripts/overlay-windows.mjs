@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
-import { lstat, unlink } from 'node:fs/promises';
+import { lstat, rename, unlink } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,17 +41,23 @@ async function removeQuietly(path, remove) {
   await remove(path).catch((error) => { if (error.code !== 'ENOENT') throw error; });
 }
 
-export async function takeRefreshCommand(path, { read, remove }) {
+export async function takeRefreshCommand(path, { read, remove, claim = rename }) {
+  const claimedPath = `${path}.${randomUUID()}.claimed`;
+  try { await claim(path, claimedPath); }
+  catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
   try {
     // Windows PowerShell 5.1 writes UTF-8 with a BOM. Accept it without treating
     // a user click as malformed, while still accepting only the exact command.
-    const request = JSON.parse((await read(path)).replace(/^\uFEFF/,''));
+    const request = JSON.parse((await read(claimedPath)).replace(/^\uFEFF/,''));
     return request?.type === 'refresh';
   } catch (error) {
     if (error.code === 'ENOENT') return false;
     return false;
   } finally {
-    await removeQuietly(path, remove);
+    await removeQuietly(claimedPath, remove);
   }
 }
 
@@ -70,7 +76,7 @@ async function assertRenderer(script, stat = lstat) {
 /** A native Windows card. It needs neither CDP nor a desktop-client restart. */
 export async function runWindowsOverlay({ environment = process.env, platform = process.platform, signal, sessionId = randomUUID(),
   directory = stateDirectory(environment), Data = OverlayData, load = loadConfiguration,
-  write = writePrivateFile, read = readPrivateFile, remove = unlink, spawnImpl = spawn,
+  write = writePrivateFile, read = readPrivateFile, remove = unlink, claim = rename, spawnImpl = spawn,
   stat = lstat, sleep = (ms, options) => delay(ms, undefined, options), emit = () => {} } = {}) {
   if (platform !== 'win32') throw new Error('The native radar card is available on Windows only.');
   const configuration = await load(environment);
@@ -95,7 +101,7 @@ export async function runWindowsOverlay({ environment = process.env, platform = 
     catch { throw new Error('Windows PowerShell could not start the Reset Radar card.'); }
     emit({ type: 'overlay_attached', mode: 'native-windows' });
     while (!combined.aborted) {
-      const manual = firstRefresh || await takeRefreshCommand(paths.commandPath, { read, remove });
+      const manual = firstRefresh || (!data.inFlight && await takeRefreshCommand(paths.commandPath, { read, remove, claim }));
       firstRefresh = false;
       if (!data.inFlight) refresh = data.refresh(combined, { manual }).catch(() => {});
       const next = JSON.stringify(windowsPayload(data));
