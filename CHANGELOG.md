@@ -5,6 +5,7 @@
 - Validate Windows private-file owners and ACLs on reads and writes, reject unsafe custom paths, and create replacement files with private permissions before writing data.
 - Add real Windows ACL regression checks alongside the existing cross-platform tests.
 - Normalize `Path` aliases only on Windows, preserving case-sensitive macOS/Linux environments and keeping Radar credentials out of the quota reader.
+- Avoid rewriting native Windows display files for heartbeat-only timestamp changes; countdowns continue locally and meaningful updates still propagate.
 
 ## 0.1.2 - 2026-09-08
 

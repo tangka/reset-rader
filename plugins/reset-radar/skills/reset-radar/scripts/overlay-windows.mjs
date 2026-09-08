@@ -27,13 +27,17 @@ export function windowsOverlayPaths(directory, sessionId) {
 // The native renderer receives display data only. It never receives configuration or API responses.
 export function windowsPayload(data) {
   const payload = data.payload();
+  const report = payload.report ? { ...payload.report } : null;
+  // The WPF timer owns its countdown. This undisplayed heartbeat timestamp must
+  // not trigger a private-file write (and a new PowerShell helper) every frame.
+  if (report) delete report.calculatedAt;
   return {
     status: payload.status,
     message: typeof payload.message === 'string' ? payload.message.slice(0, 240) : '',
     nextRefreshAt: Number.isFinite(payload.nextRefreshAt) ? payload.nextRefreshAt : 0,
     refreshing: Boolean(data.inFlight),
     canRefresh: !data.terminal && !data.inFlight && Date.now() >= (data.retryAfterAt || 0),
-    report: payload.report || null,
+    report,
   };
 }
 

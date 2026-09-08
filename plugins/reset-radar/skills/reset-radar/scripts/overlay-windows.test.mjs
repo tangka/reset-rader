@@ -13,6 +13,37 @@ test('native renderer payload contains only safe display fields', () => {
   assert.equal(JSON.stringify(payload).includes('never-forward'),false);
 });
 
+test('native heartbeat timestamps do not rewrite unchanged display data', () => {
+  const report = Object.freeze({
+    baseProbability:25, personalProbability:25, calculatedAt:'2026-09-08T00:00:00Z',
+    radarGeneratedAt:'2026-09-07T23:59:00Z',
+    weeklyWindows:[{limitId:'codex',resetAt:'2026-09-09T01:00:00Z',usedPercent:80,personalProbability:25}],
+  });
+  const state = {status:'ready',report};
+  const data = {payload:() => state};
+  const initial = JSON.stringify(windowsPayload(data));
+  for (const calculatedAt of ['2026-09-08T00:00:00.400Z','2026-09-08T00:00:01Z']) {
+    state.report = {...report,calculatedAt};
+    assert.equal(JSON.stringify(windowsPayload(data)),initial);
+  }
+  assert.equal(report.calculatedAt,'2026-09-08T00:00:00Z','do not mutate shared Mac/report inputs');
+  assert.equal(Object.hasOwn(windowsPayload(data).report,'calculatedAt'),false);
+  assert.equal(windowsPayload(data).report.weeklyWindows[0].resetAt,'2026-09-09T01:00:00Z');
+
+  // Crossing the 24h boundary still updates probabilities; expiry still clears state.
+  state.report = {...report,personalProbability:100,
+    weeklyWindows:[{...report.weeklyWindows[0],personalProbability:100}]};
+  assert.notEqual(JSON.stringify(windowsPayload(data)),initial);
+  assert.equal(windowsPayload(data).report.personalProbability,100);
+  state.status = 'error';
+  state.report = null;
+  assert.equal(windowsPayload(data).report,null);
+  assert.notEqual(JSON.stringify(windowsPayload(data)),initial);
+  state.status = 'ready';
+  state.report = report;
+  assert.equal(JSON.stringify(windowsPayload(data)),initial);
+});
+
 test('native card keeps state and command paths inside its selected directory', () => {
   const paths = windowsOverlayPaths('C:/state','overlay_1');
   assert.match(paths.statePath,/windows-overlay-overlay_1\.json$/);
