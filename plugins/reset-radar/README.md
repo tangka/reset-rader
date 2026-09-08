@@ -46,6 +46,8 @@ Get-Clipboard | node skills/reset-radar/scripts/reset-radar.mjs configure --key-
 
 macOS/Linux 的 Key 仅保存到本机 `~/.config/reset-radar/api-key`，权限 600；Windows 保存至 `%LOCALAPPDATA%\\reset-radar\\api-key`。也支持现有 `RESET_RADAR_API_KEY` 环境变量或 `RESET_RADAR_API_KEY_FILE` 私有文件。不要把 Key 写入命令参数、插件文件、仓库或提醒提示词。代码不会读取 Codex 登录凭证，也不会上传个人额度/时间。
 
+Windows 文件读写会通过系统 Windows PowerShell 验证所有者和 ACL，新文件从创建时即采用私有权限。已有文件权限不安全、目录允许其他用户写入或 ACL 无法核验时拒绝操作，不修改共享目录权限，也不覆盖原 Key；自定义文件和状态目录不能绕过检查。
+
 默认服务地址为 `https://api.tangka.online/radar-api/member/v1`，仅在用户明确指定可信自建服务时覆盖 `RESET_RADAR_API_BASE`。服务器必须支持并回显 `naturalCycle: "exclude"`，旧服务忽略参数时插件会明确报错，不会混入公共自然周期。
 
 ## 周额度读取程序

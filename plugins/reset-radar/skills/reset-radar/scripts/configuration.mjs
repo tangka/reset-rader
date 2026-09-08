@@ -4,6 +4,7 @@ import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { API_KEY_PATTERN, readConfiguration } from './api-client.mjs';
+import { readWindowsPrivateFile, writeWindowsPrivateFile } from './windows-private-file.mjs';
 
 export function stateDirectory(environment = process.env) {
   if (environment.RESET_RADAR_STATE_DIR) return resolve(environment.RESET_RADAR_STATE_DIR);
@@ -14,6 +15,7 @@ export function stateDirectory(environment = process.env) {
 }
 
 export async function readPrivateFile(path) {
+  if (process.platform === 'win32') return readWindowsPrivateFile(path);
   let handle;
   try {
     const entry = await lstat(path);
@@ -22,11 +24,8 @@ export async function readPrivateFile(path) {
     }
     handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
     const stat = await handle.stat();
-    // Windows ACLs are not represented by stat.mode. The default state directory
-    // is inside the current user's LocalAppData profile, so enforce the POSIX
-    // mode/uid invariant only on platforms where Node exposes it reliably.
-    const unsafePermissions = process.platform !== 'win32' && ((stat.mode & 0o077)
-      || (process.getuid && stat.uid !== process.getuid()));
+    const unsafePermissions = (stat.mode & 0o077)
+      || (process.getuid && stat.uid !== process.getuid());
     if (!stat.isFile() || stat.size > 65536 || unsafePermissions) {
       throw new Error('Private radar file must be owner-only (chmod 600).');
     }
@@ -35,6 +34,7 @@ export async function readPrivateFile(path) {
 }
 
 export async function writePrivateFile(path, content) {
+  if (process.platform === 'win32') return writeWindowsPrivateFile(path, content);
   await mkdir(dirname(path), {recursive:true,mode:0o700});
   const temporary = `${path}.${randomUUID()}.tmp`;
   const handle = await open(temporary, 'wx', 0o600);
@@ -55,7 +55,9 @@ export async function loadConfiguration(environment = process.env) {
   let apiKey;
   try { apiKey = await readPrivateFile(path); } catch (error) {
     if (error.code === 'ENOENT') throw new Error('Set up a long-term member API Key first (configure --key-stdin).');
-    throw new Error('Cannot read private radar Key file; check owner and chmod 600.');
+    throw new Error(process.platform === 'win32'
+      ? 'Cannot read private radar Key file; check Windows owner and ACL permissions.'
+      : 'Cannot read private radar Key file; check owner and chmod 600.');
   }
   return readConfiguration({...environment,RESET_RADAR_API_KEY:apiKey});
 }

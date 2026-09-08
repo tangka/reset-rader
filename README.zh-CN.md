@@ -132,6 +132,7 @@ node plugins/reset-radar/skills/reset-radar/scripts/reset-radar.mjs overlay star
 ## 数据与权限
 
 - macOS/Linux 的 Key 保存在本机 `~/.config/reset-radar/api-key`，文件权限为 `600`；Windows 保存至 `%LOCALAPPDATA%\\reset-radar\\api-key`。Key 只发送到配置的会员 API 用于鉴权。不要共用、提交或打包自己的 Key。
+- Windows 读写通过系统 Windows PowerShell 核验文件所有者及 ACL，新文件创建时即设置私有权限；已有文件权限不安全或目录允许其他用户写入时直接拒绝，不修改目录权限或覆盖原 Key。自定义 Key/状态路径同样检查；无法核验 ACL 时不会跳过检查继续使用。
 - 个人用量和重置时间由本机 Codex 的只读接口提供，不上传到雷达 API；只使用通用 Codex 周额度，不监听模型专属额度。
 - 雷达返回**不含自然周期**的额外重置概率。若自己的周额度将在未来 24 小时内自然重置，个人数值为 100%；否则采用额外重置概率。它是时间表推算，不表示额外重置已经发生；数据缺失或过期会显示不可用。
 - 默认每 10 分钟刷新一次；会员账户共用 30 次/10 分钟、并发 2 的服务端限额，手动刷新也遵守 429 等待时间。更换 Key 不重置账户额度。

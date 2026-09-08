@@ -4,6 +4,7 @@
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'windows-private-file-library.ps1')
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 
@@ -47,7 +48,7 @@ $collapsed = $false
 . (Join-Path $PSScriptRoot 'overlay-windows-render.ps1')
 
 $Header.Add_MouseLeftButtonDown({ if ($_.ChangedButton -eq [System.Windows.Input.MouseButton]::Left) { $window.DragMove() } })
-$Refresh.Add_Click({ $temporary = "$CommandPath.$PID.tmp"; Set-Content -LiteralPath $temporary -Value '{"type":"refresh"}' -Encoding utf8; Move-Item -LiteralPath $temporary -Destination $CommandPath -Force })
+$Refresh.Add_Click({ [RadarPrivateFile]::Write($CommandPath, '{"type":"refresh"}') })
 $Collapse.Add_Click({ $script:collapsed = -not $script:collapsed; $Body.Visibility = if ($script:collapsed) { 'Collapsed' } else { 'Visible' }; $Collapse.Content = if ($script:collapsed) { '+' } else { '−' } })
 $Close.Add_Click({ $window.Close() })
 $timer = New-Object Windows.Threading.DispatcherTimer
