@@ -1,5 +1,8 @@
 # 独立仓库交付
 
+- [x] 按用户最新署名“唐卡/Tangka”更新插件作者、开发者、README 和对应断言；只改署名，测试与元数据校验通过后单独提交，保持现有功能与本机安装不变。
+  - 三处显示署名及两条断言完全一致；npm test 147/147、npm run check、插件元数据验证与 git diff --check 通过，未改运行代码、版本号或本机安装。
+
 - [x] 按用户提供的 tangka/reset-rader 远程地址更新安装说明，保留 reset-radar 插件及 marketplace 标识；测试、源码和差异检查通过后独立提交，不修改插件功能或现有安装。
   - README 已替换为实际 GitHub 地址，明确仓库名与插件安装标识不同；npm test 147/147、npm run check、打包边界3/3与 git diff --check 通过，生产代码无修改。
 - [x] 将独立仓库关联并正常推送到用户指定的 https://github.com/tangka/reset-rader.git：先确认远程为空且无冲突，推送后回读分支提交、公开文件与干净克隆检查，再记录核验结果；不强推、不改其他仓库或运行服务。

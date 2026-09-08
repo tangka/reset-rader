@@ -22,8 +22,8 @@ async function files(directory) {
 test('repository marketplace resolves the packaged plugin and skill', async () => {
   const marketplace = await readJson(join(root, '.agents/plugins/marketplace.json'));
   const manifest = await readJson(join(plugin, '.codex-plugin/plugin.json'));
-  assert.equal(manifest.author.name, '唐卡');
-  assert.equal(manifest.interface.developerName, '唐卡');
+  assert.equal(manifest.author.name, '唐卡/Tangka');
+  assert.equal(manifest.interface.developerName, '唐卡/Tangka');
   assert.equal(marketplace.name, 'reset-radar');
   assert.equal(marketplace.plugins.length, 1);
   const entry = marketplace.plugins[0];
