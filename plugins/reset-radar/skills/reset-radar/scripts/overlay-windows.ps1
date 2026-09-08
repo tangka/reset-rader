@@ -43,36 +43,7 @@ $window = [Windows.Markup.XamlReader]::Load($reader)
 $names = 'Header','Refresh','Collapse','Close','Body','Personal','Base','Message','WindowProbability','Countdown','Usage','Updated','RefreshHint'
 foreach ($name in $names) { Set-Variable -Name $name -Value $window.FindName($name) }
 $collapsed = $false
-$current = $null
-
-function Percent($value) { if ($null -eq $value) { return '--' }; return ('{0:0.#}%' -f [double]$value) }
-function Countdown($value) {
-  if (-not $value) { return '时间暂不可用' }
-  try { $span = ([DateTimeOffset]::Parse($value) - [DateTimeOffset]::UtcNow) } catch { return '时间暂不可用' }
-  if ($span.TotalSeconds -le 0) { return '已到期 · 等待更新' }
-  $days = [math]::Floor($span.TotalDays)
-  if ($days -gt 0) { return ('{0}天 {1:00}:{2:00}:{3:00}' -f $days,$span.Hours,$span.Minutes,$span.Seconds) }
-  return ('{0:00}:{1:00}:{2:00}' -f $span.Hours,$span.Minutes,$span.Seconds)
-}
-function Render($payload) {
-  if ($null -eq $payload) { return }
-  $script:current = $payload
-  $report = $payload.report
-  if ($report) {
-    $Personal.Text = Percent $report.personalProbability
-    $Base.Text = Percent $report.baseProbability
-    $windowItem = @($report.weeklyWindows | Where-Object { $_.limitId -eq 'codex' }) | Select-Object -First 1
-    if (-not $windowItem) { $windowItem = @($report.weeklyWindows) | Select-Object -First 1 }
-    if ($windowItem) {
-      $WindowProbability.Text = Percent $windowItem.personalProbability
-      $Countdown.Text = Countdown $windowItem.resetAt
-      if ($null -ne $windowItem.usedPercent) { $Usage.Text = ('已用 {0:0.#}% · 剩余 {1:0.#}%' -f [double]$windowItem.usedPercent,[math]::Max(0,100-[double]$windowItem.usedPercent)) } else { $Usage.Text = '用量暂不可用' }
-    }
-  }
-  $Message.Text = if ($payload.message) { $payload.message } elseif ($payload.status -eq 'ready') { '24 小时内仅计额外重置' } else { '正在读取雷达与周额度…' }
-  $Refresh.IsEnabled = [bool]$payload.canRefresh
-  $RefreshHint.Text = if ($payload.refreshing) { '正在刷新…' } elseif ($payload.canRefresh) { '点击刷新' } else { '自动刷新' }
-}
+. (Join-Path $PSScriptRoot 'overlay-windows-render.ps1')
 
 $Header.Add_MouseLeftButtonDown({ if ($_.ChangedButton -eq [System.Windows.Input.MouseButton]::Left) { $window.DragMove() } })
 $Refresh.Add_Click({ $temporary = "$CommandPath.$PID.tmp"; Set-Content -LiteralPath $temporary -Value '{"type":"refresh"}' -Encoding utf8; Move-Item -LiteralPath $temporary -Destination $CommandPath -Force })
@@ -81,8 +52,7 @@ $Close.Add_Click({ $window.Close() })
 $timer = New-Object Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromMilliseconds(500)
 $timer.Add_Tick({
-  try { $payload = Get-Content -LiteralPath $StatePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop; Render $payload } catch {}
-  if ($script:current -and $script:current.report) { $row = @($script:current.report.weeklyWindows | Where-Object { $_.limitId -eq 'codex' }) | Select-Object -First 1; if ($row) { $Countdown.Text = Countdown $row.resetAt } }
+  try { $payload = Get-Content -LiteralPath $StatePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop; Render $payload } catch { Render $null }
 })
 $window.Add_Loaded({ $window.Left = [System.Windows.SystemParameters]::WorkArea.Right - $window.ActualWidth - 24; $window.Top = [System.Windows.SystemParameters]::WorkArea.Bottom - $window.ActualHeight - 24; $timer.Start() })
 $window.Add_Closed({ $timer.Stop() })
