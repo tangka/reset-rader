@@ -1,0 +1,12 @@
+{
+  "name": "reset-radar-codex-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal weekly reset probability for Codex, backed by the Reset Radar member API",
+  "scripts": {
+    "test": "node --test",
+    "check": "node check-source.mjs"
+  },
+  "engines": { "node": ">=22" }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "reset-radar",
+  "interface": {
+    "displayName": "Reset Radar"
+  },
+  "plugins": [
+    {
+      "name": "reset-radar",
+      "source": {
+        "source": "local",
+        "path": "./plugins/reset-radar"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "reset-radar",
+  "version": "0.1.0",
+  "description": "重置雷达会员 API：结合本机 Codex 周额度，计算个人重置概率并按需提醒。",
+  "author": {
+    "name": "AI玩唐卡"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "重置雷达",
+    "shortDescription": "结合本机周额度，查看个人重置概率与提醒。",
+    "longDescription": "使用长期会员 API Key 获取不含自然周期的雷达概率，结合本机 Codex 周额度重置时间计算个人 24 小时概率；支持服务状态、历史查询与主动开启的 10 分钟检查。",
+    "developerName": "AI玩唐卡",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "查询我的 Codex 周额度重置时间和未来 24 小时个人重置概率。"
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "重置雷达"
+  short_description: "结合本机周额度与雷达额外重置概率，查询个人概率及重置提醒"
+  default_prompt: "使用 $reset-radar 查询我的 Codex 周额度重置时间和未来 24 小时个人重置概率。"
