@@ -1,5 +1,6 @@
 # Static Windows PowerShell 5.1 / .NET Framework library shared by private files and native commands.
 # Loading this library never reads stdin, processes requests, or writes content.
+. ([System.IO.Path]::Combine($PSScriptRoot, 'windows-powershell-bootstrap.ps1'))
 if (-not ('RadarPrivateFile' -as [type])) {
     Add-Type -TypeDefinition @'
 using System;

@@ -2,11 +2,11 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Set-StrictMode -Version Latest
-[Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false, $true)
-[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false, $true)
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
 try {
-    . (Join-Path $PSScriptRoot 'windows-private-file-library.ps1')
+    . ([System.IO.Path]::Combine($PSScriptRoot, 'windows-private-file-library.ps1'))
 
     $inputText = [Console]::In.ReadToEnd()
     if ($inputText.Length -gt 524288) { throw 'Invalid request.' }

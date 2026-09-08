@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+. ([System.IO.Path]::Combine($PSScriptRoot, 'windows-powershell-bootstrap.ps1'))
 if ($PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -ne 1) {
   throw 'These assertions must run in native Windows PowerShell 5.1.'
 }

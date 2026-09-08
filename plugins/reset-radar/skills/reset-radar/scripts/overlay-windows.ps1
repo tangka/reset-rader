@@ -4,7 +4,7 @@
 )
 
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot 'windows-private-file-library.ps1')
+. ([System.IO.Path]::Combine($PSScriptRoot, 'windows-private-file-library.ps1'))
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 

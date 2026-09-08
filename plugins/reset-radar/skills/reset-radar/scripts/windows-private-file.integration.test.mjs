@@ -35,8 +35,10 @@ async function writeNativeRefreshCommand(commandPath) {
   const source = await readFile(new URL('./overlay-windows.ps1', import.meta.url), 'utf8');
   const handler = source.match(/^\$Refresh\.Add_Click\(\{ (.+) \}\)\r?$/m)?.[1];
   assert.ok(handler, 'exercise the production refresh handler without opening its WPF window');
+  const bootstrap = fileURLToPath(new URL('./windows-powershell-bootstrap.ps1', import.meta.url));
   const script = [
     "$ErrorActionPreference = 'Stop'",
+    `. '${bootstrap.replaceAll("'", "''")}'`,
     '[Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false)',
     '$request = ConvertFrom-Json -InputObject ([Console]::In.ReadToEnd())',
     '$CommandPath = [string]$request.path',
