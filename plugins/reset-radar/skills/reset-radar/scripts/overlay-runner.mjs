@@ -146,6 +146,19 @@ export async function overlayMain(args,environment = process.env) {
   const stop = () => controller.abort();
   process.once('SIGINT',stop); process.once('SIGTERM',stop);
   try {
+    if (process.platform === 'win32') {
+      if (command === 'launch') throw new Error('Windows uses a native card directly; run overlay start instead.');
+      if (command === 'doctor') {
+        process.stdout.write(`${JSON.stringify({available:true,mode:'native-windows',
+          note:'Uses an independent Windows card; Codex does not need to restart.'})}\n`);
+        return;
+      }
+      const {runWindowsOverlay} = await import('./overlay-windows.mjs');
+      const result = await runWindowsOverlay({environment,signal:controller.signal,
+        emit:value => process.stdout.write(`${JSON.stringify(value)}\n`)});
+      process.stdout.write(`${JSON.stringify(result)}\n`);
+      return;
+    }
     if (command === 'launch') {
       const {launchDebuggingDesktop} = await import('./overlay-launch.mjs');
       const result = await launchDebuggingDesktop({signal:controller.signal});

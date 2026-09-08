@@ -4,7 +4,7 @@
 
 开发者：唐卡/Tangka
 
-在 Codex 里查看自己的周额度使用率、重置倒计时和未来 24 小时重置概率。支持主窗口内悬浮卡片，Key 配置和手动刷新都能在卡片中完成。
+在 Codex 里查看自己的周额度使用率、重置倒计时和未来 24 小时重置概率。Windows 使用原生悬浮卡片；macOS 可选在 Codex 主窗口内显示卡片。
 
 这是独立插件仓库，不需要安装重置雷达小程序源码、采集器或后端。数据服务仍使用重置雷达会员 API。
 
@@ -13,7 +13,7 @@
 - Node.js **22 或更新版本**，终端中能运行 `node`；`npm` 仅用于开发检查。
 - 已登录自己的 Codex 账号。macOS 周额度查询可复用 Codex 桌面端自带的可执行文件，无需另装 Codex CLI；Windows 请确保 `codex` 已在 `PATH` 中，或用 `RESET_RADAR_CODEX_PATH` 指定绝对 `codex.exe` 路径；安装命令需要所用可执行文件支持 `plugin`。
 - 重置雷达小程序的有效**长期会员 API Key**；月度会员不包含 API 权益，每个人使用自己的 Key。
-- Windows、macOS 与 Linux 均支持普通查询和监控。悬浮框目前只验证了 **macOS Codex 桌面端**：这是非官方 CDP 调试接入，不是官方悬浮组件；客户端升级可能使其失效。
+- Windows、macOS 与 Linux 均支持普通查询和监控。**Windows** 悬浮框是本机原生窗口，无需重启 Codex 或开启调试端口；macOS 主窗口内卡片仍是非官方 CDP 调试接入，客户端升级可能使其失效。
 
 ## 安装
 
@@ -75,7 +75,7 @@ node plugins/reset-radar/skills/reset-radar/scripts/codex-runtime.mjs
 
 找到程序仅表示路径解析成功；账户登录和所需 app-server 协议是否兼容，仍需通过实际个人额度查询确认。
 
-1. 插件先检测当前 Codex 是否有可用的本机调试入口。没有时，会说明风险；**获得你同意后**，由你正常退出 Codex，再从外部终端调试启动。不会自动杀进程、改应用包或关闭安全功能。
+1. Windows 直接运行 `overlay start` 打开原生卡片，不重启 Codex、不启用调试入口。macOS 才会检测本机调试入口；没有时会说明风险，并在**获得你同意后**由你正常退出 Codex、从外部终端调试启动。
 2. 连接成功后，在卡片密码框粘贴自己的会员 Key，点击“保存并连接”。不要把 Key 发到聊天里。
 3. 卡片会显示个人概率、额外重置概率、周额度倒计时、已用/剩余百分比。顶部 `↻` 立即刷新，`−` 收起，`×` 关闭；关闭后再次让 Codex“打开悬浮雷达”即可。
 
@@ -96,6 +96,15 @@ Get-Clipboard | node plugins/reset-radar/skills/reset-radar/scripts/reset-radar.
 ```
 
 更多命令、调试启动、错误处理和提醒设置见 [插件使用说明](plugins/reset-radar/README.md)。
+
+### Windows 原生悬浮卡片（本地仓库方式）
+
+```powershell
+node plugins/reset-radar/skills/reset-radar/scripts/reset-radar.mjs overlay doctor
+node plugins/reset-radar/skills/reset-radar/scripts/reset-radar.mjs overlay start
+```
+
+窗口打开期间保留该终端进程。首次打开会立即刷新，但仍遵守服务端 `429` 等待时间；窗口只接收本机 Node 桥接筛选后的展示字段，不接收已保存的 API Key。
 
 ### macOS 悬浮卡片外部终端手动启动（本地仓库方式）
 

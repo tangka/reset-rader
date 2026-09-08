@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 - 2026-09-08
+
+- Add a native Windows floating Reset Radar card with drag, collapse, close, manual refresh, and live weekly-quota calculations.
+- Start the Windows card without restarting Codex or enabling a debugging port; the card receives only safe display fields from the local Node bridge.
+- Make the first Windows card load an immediate, rate-limit-aware refresh and accept the UTF-8 BOM emitted by Windows PowerShell refresh commands.
+
 ## 0.1.1 - 2026-09-08
 
 - Add Windows support for regular Reset Radar queries and monitoring.

@@ -16,8 +16,8 @@ const USAGE = `Reset Radar (read-only, weekly quota only)
   history <platform> [--limit 1-14] [--before <cursor>] [--date YYYY-MM-DD]
   check [--threshold 0-100]         One monitoring check, persistent deduplication
   watch [--threshold 0-100]         Foreground monitor, every 10 minutes; Ctrl+C stops
-  overlay doctor [--port N]        Read-only check for a compatible Codex desktop
-  overlay start [--port N] [--target ID]  In-Codex floating radar; close or Ctrl+C stops
+  overlay doctor [--port N]        Check native Windows card or compatible macOS Codex desktop
+  overlay start [--port N] [--target ID]  Windows native card or macOS in-Codex card; close or Ctrl+C stops
   overlay launch                  Debug-launch installed macOS app only after it exits
   configure --key-stdin             Save owner-only Key from stdin, never argv
   --help

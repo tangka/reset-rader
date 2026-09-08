@@ -32,7 +32,8 @@ test('repository marketplace resolves the packaged plugin and skill', async () =
   assert.equal(resolve(root, entry.source.path), plugin);
   assert.equal(entry.policy.installation, 'AVAILABLE');
   assert.equal(entry.policy.authentication, 'ON_INSTALL');
-  assert.equal(manifest.version, (await readJson(join(plugin, 'package.json'))).version);
+  // Local Codex iteration may add a build suffix to refresh the installed cache.
+  assert.equal(manifest.version.split('+')[0], (await readJson(join(plugin, 'package.json'))).version);
   const skill = await readFile(join(plugin, manifest.skills, 'reset-radar/SKILL.md'), 'utf8');
   assert.match(skill, /^name: reset-radar$/m);
 });
