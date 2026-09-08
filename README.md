@@ -4,7 +4,7 @@ English | [简体中文](README.zh-CN.md)
 
 Developer: 唐卡/Tangka
 
-See your Codex weekly quota usage, reset countdown, and personal reset probability for the next 24 hours. A floating card inside the Codex main window lets you configure your API key and refresh the data without leaving the card.
+See your Codex weekly quota usage, reset countdown, and personal reset probability for the next 24 hours. On Windows, Reset Radar opens a native floating card; on macOS it can optionally appear inside the Codex main window.
 
 This is a standalone plugin repository. You do not need the Reset Radar Mini Program source, collector, or backend. Data is provided by the Reset Radar member API.
 
@@ -13,7 +13,7 @@ This is a standalone plugin repository. You do not need the Reset Radar Mini Pro
 - **Node.js 22 or later**, with `node` available in your terminal. `npm` is only needed for development checks.
 - Your own signed-in Codex account. On macOS, weekly quota queries can use the executable bundled with Codex desktop; on Windows, make sure `codex` is on `PATH` or set `RESET_RADAR_CODEX_PATH` to an absolute `codex.exe` path. Installation commands need a Codex executable that supports `plugin`.
 - A valid **long-term member API key** from the Reset Radar WeChat Mini Program. Monthly membership does not include API access. Each person must use their own key.
-- Regular queries and monitoring are supported on Windows, macOS, and Linux. The floating card remains verified only with **Codex desktop on macOS**: it uses an unofficial CDP debugging connection, not an official overlay component. App updates may break it.
+- Regular queries and monitoring are supported on Windows, macOS, and Linux. On **Windows**, the card is a native local window and does not require a Codex restart or debugging port. The optional macOS in-Codex card uses an unofficial CDP debugging connection; app updates may break that macOS mode.
 
 ## Installation
 
@@ -75,7 +75,7 @@ node plugins/reset-radar/skills/reset-radar/scripts/codex-runtime.mjs
 
 The diagnostic prints the selected source and command. Finding an executable does not establish account login or compatibility with the required app-server protocol; a personal quota query must still succeed.
 
-1. The plugin checks whether the current Codex app exposes a compatible local debugging endpoint. If not, it explains the risks. **Only with your consent**, you can quit Codex normally and relaunch it in debugging mode from an external terminal. The plugin does not automatically kill processes, modify the app bundle, or disable security features.
+1. On Windows, start the native card directly with `overlay start`; it does not restart Codex or enable a debugging endpoint. On macOS, the plugin checks whether the current Codex app exposes a compatible local debugging endpoint. If not, it explains the risks. **Only with your consent**, you can quit Codex normally and relaunch it in debugging mode from an external terminal.
 2. Once the card is connected, paste your member API key into its password field and click **Save and connect** (`保存并连接`). Do not paste the key into chat.
 3. The card displays your personal probability, extra reset probability, weekly reset countdown, and used/remaining percentages. Click `↻` to refresh, `−` to collapse, or `×` to close. To reopen it, ask Codex to open the floating radar again.
 
@@ -96,6 +96,15 @@ Get-Clipboard | node plugins/reset-radar/skills/reset-radar/scripts/reset-radar.
 ```
 
 See the [detailed plugin guide (Chinese)](plugins/reset-radar/README.md) for more commands, debugging setup, error handling, and reminders.
+
+### Windows native floating card (local repository)
+
+```powershell
+node plugins/reset-radar/skills/reset-radar/scripts/reset-radar.mjs overlay doctor
+node plugins/reset-radar/skills/reset-radar/scripts/reset-radar.mjs overlay start
+```
+
+Keep the terminal process running while the card is open. The first load refreshes immediately while respecting a server `429` retry deadline. The card receives only display values from the local Node bridge; it never receives the saved API key.
 
 ### Manual macOS floating-card launch from an external terminal (local repository)
 

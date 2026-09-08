@@ -52,7 +52,7 @@ macOS/Linux 的 Key 仅保存到本机 `~/.config/reset-radar/api-key`，权限 
 
 macOS 会先查找正在运行的 Codex 桌面应用，再检查 `/Applications`、`~/Applications` 下的常见安装位置。核对应用标识 `com.openai.codex` 后，使用该应用的 `Contents/Resources/codex`；没有找到可用的桌面端程序时，回退到 PATH 中的 `codex`。Windows/Linux 使用 PATH 中的 `codex`。
 
-自定义安装位置可设置 `RESET_RADAR_CODEX_APP`，值必须是绝对 `.app` 路径；也可用 `RESET_RADAR_CODEX_PATH` 指定可执行文件的绝对路径。显式配置无效时会报错，不回退到其他程序。这两个设置仅用于周额度读取，不扩展悬浮框 CDP 探测或调试启动支持的应用路径，也不代表 Windows/Linux 悬浮框已受支持。
+自定义安装位置可设置 `RESET_RADAR_CODEX_APP`，值必须是绝对 `.app` 路径；也可用 `RESET_RADAR_CODEX_PATH` 指定可执行文件的绝对路径。显式配置无效时会报错，不回退到其他程序。这两个设置只选择周额度读取程序；Windows 原生悬浮框不依赖 CDP，macOS 的 CDP 卡片仍不扩展到其他应用路径。
 
 在本插件目录查看最终选择的来源和命令：
 
@@ -90,7 +90,20 @@ npm run check
 
 测试使用明确的测试 HTTP 服务和测试 Key，不当作线上数据；真实线上可用性必须另外验证。
 
-## Codex 内部悬浮卡片
+## 悬浮卡片
+
+### Windows 原生卡片
+
+Windows 直接打开独立的置顶卡片，不修改、重启或调试启动 Codex。卡片支持拖动、收起、关闭和手动刷新；首次打开立即计算，仍遵守 API 的 429 等待时间。窗口只从本地 Node 桥接读取已经筛选的概率、倒计时和用量字段，不接收或保存 API Key。
+
+```powershell
+node skills/reset-radar/scripts/reset-radar.mjs overlay doctor
+node skills/reset-radar/scripts/reset-radar.mjs overlay start
+```
+
+保留启动命令的终端进程。关闭卡片或 Ctrl+C 会停止该会话并清理临时展示状态。
+
+### macOS Codex 内部卡片
 
 插件可通过本机 CDP 调试会话，把雷达卡片挂在 Codex 主界面右下角。不是系统置顶窗，也不依赖 Pets。支持拖动、收起、关闭，以及个人 24 小时概率、额外重置概率和周额度倒计时。
 
@@ -99,7 +112,7 @@ node skills/reset-radar/scripts/reset-radar.mjs overlay doctor
 node skills/reset-radar/scripts/reset-radar.mjs overlay start
 ```
 
-仅支持已验证的 macOS Codex 主界面目标；Windows/Linux 使用普通查询和监控，不支持悬浮卡片。无接口会明确报错，不自动重启。若列出多个窗口，指定 `--port <端口> --target <窗口ID>`。卡片内数据每 10 分钟自动查询，倒计时本地每秒更新，不运行额外 SDK 研判。点击顶部“−”左侧的“↻”可立即刷新雷达与本机周额度，读取期间图标旋转并禁用，重复点击不排队。手动刷新不绕过服务端 429 等待时间，重开卡片仍遵守限流。Key 由用户主动在密码框中输入，经当前卡片专用的一次性本机通道交给 Node 保存；提交立即清空输入，不写入聊天、日志、URL 或浏览器存储，也不把已保存 Key 送回卡片。Key 只发给配置的会员 API 鉴权。若由 `RESET_RADAR_API_KEY` 环境变量提供，则不能在卡片内覆盖，需先移除该变量，避免下次启动仍用旧值。
+macOS 仅支持已验证的 Codex 主界面目标。无接口会明确报错，不自动重启。若列出多个窗口，指定 `--port <端口> --target <窗口ID>`。卡片内数据每 10 分钟自动查询，倒计时本地每秒更新，不运行额外 SDK 研判。点击顶部“−”左侧的“↻”可立即刷新雷达与本机周额度，读取期间图标旋转并禁用，重复点击不排队。手动刷新不绕过服务端 429 等待时间，重开卡片仍遵守限流。Key 由用户主动在密码框中输入，经当前卡片专用的一次性本机通道交给 Node 保存；提交立即清空输入，不写入聊天、日志、URL 或浏览器存储，也不把已保存 Key 送回卡片。Key 只发给配置的会员 API 鉴权。若由 `RESET_RADAR_API_KEY` 环境变量提供，则不能在卡片内覆盖，需先移除该变量，避免下次启动仍用旧值。
 
 若当前客户端没有调试入口，正常退出 Codex 后，在外部终端运行：
 
