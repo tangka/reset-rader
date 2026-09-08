@@ -18,10 +18,12 @@ const systemPath = win32.join(process.env.SystemRoot, 'System32');
 const modulePath = win32.join(systemPath, 'WindowsPowerShell', 'v1.0', 'Modules');
 const safeFull = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/key|token|secret|password|credential|cookie|authorization/i.test(name)));
 for (const [name, env] of [
-  ['minimal-file', minimal],
-  ['fixed-modules-file', { ...minimal, PSModulePath: modulePath }],
-  ['fixed-path-file', { ...minimal, PATH: systemPath }],
-  ['standard-fixed-file', { ...standard, PATH: systemPath, PSModulePath: modulePath }],
+  ['pathext-file', { ...minimal, PATHEXT: '.COM;.EXE;.BAT;.CMD' }],
+  ['home-file', { ...minimal, HOMEDRIVE: process.env.HOMEDRIVE, HOMEPATH: process.env.HOMEPATH }],
+  ['programdata-file', { ...minimal, ProgramData: process.env.ProgramData }],
+  ['full-modules-file', { ...minimal, PSModulePath: process.env.PSModulePath }],
+  ['full-path-file', { ...minimal, PATH: process.env.PATH }],
+  ['standard-pathext-file', { ...standard, PATH: systemPath, PSModulePath: modulePath, PATHEXT: '.COM;.EXE;.BAT;.CMD' }],
   ['scrubbed-file', safeFull],
 ]) {
   const start = Date.now();
