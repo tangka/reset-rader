@@ -14,7 +14,16 @@ for (const [name, value] of Object.entries(process.env)) {
   if (/^ProgramFiles(\(x86\))?$/i.test(name)) withProgramFiles[name] = value;
 }
 const script = fileURLToPath(new URL('./windows-startup-probe.ps1', import.meta.url));
-for (const [name, env] of [['minimal-file', minimal], ['programfiles-file', withProgramFiles], ['standard-file', standard]]) {
+const systemPath = win32.join(process.env.SystemRoot, 'System32');
+const modulePath = win32.join(systemPath, 'WindowsPowerShell', 'v1.0', 'Modules');
+const safeFull = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/key|token|secret|password|credential|cookie|authorization/i.test(name)));
+for (const [name, env] of [
+  ['minimal-file', minimal],
+  ['fixed-modules-file', { ...minimal, PSModulePath: modulePath }],
+  ['fixed-path-file', { ...minimal, PATH: systemPath }],
+  ['standard-fixed-file', { ...standard, PATH: systemPath, PSModulePath: modulePath }],
+  ['scrubbed-file', safeFull],
+]) {
   const start = Date.now();
   const result = spawnSync(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script],
     { env, input: '', shell: false, windowsHide: true, encoding: 'utf8', timeout: 5000, maxBuffer: 65536 });
