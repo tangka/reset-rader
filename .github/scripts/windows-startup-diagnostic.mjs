@@ -13,12 +13,10 @@ const script = fileURLToPath(new URL('./windows-startup-probe.ps1', import.meta.
 const systemPath = win32.join(process.env.SystemRoot, 'System32');
 const safeEnvironment = { ...standard, PATH: systemPath, PATHEXT: '.COM;.EXE;.BAT;.CMD' };
 const invoke = "& '" + script.replaceAll("'", "''") + "'";
-const snapins = "$ErrorActionPreference='Stop'; $PSModuleAutoLoadingPreference='None'; Add-PSSnapin Microsoft.PowerShell.Management,Microsoft.PowerShell.Utility; ";
+const modules = "$ErrorActionPreference='Stop'; $PSModuleAutoLoadingPreference='None'; foreach ($name in @('Microsoft.PowerShell.Management','Microsoft.PowerShell.Utility')) { Import-Module -Name ($PSHOME + '\\Modules\\' + $name + '\\' + $name + '.psd1') -ErrorAction Stop }; ";
 for (const [name, env, command] of [
-  ['explicit-snapins-minimal', minimal, snapins + invoke],
-  ['explicit-snapins-system', safeEnvironment, snapins + invoke],
-  ['warmed-cache', { ...safeEnvironment, PSModuleAnalysisCachePath: process.env.PSModuleAnalysisCachePath }, invoke],
-  ['cold-native-modules', { ...safeEnvironment, PSModulePath: win32.join(systemPath, 'WindowsPowerShell', 'v1.0', 'Modules') }, invoke],
+  ['explicit-modules-minimal', minimal, modules + invoke],
+  ['explicit-modules-system', safeEnvironment, modules + invoke],
 ]) {
   const start = Date.now();
   const result = spawnSync(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command],
