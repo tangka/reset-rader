@@ -16,6 +16,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
+      - run: node .github/windows-native-startup.mjs
       # Isolated suites can each start PowerShell/.NET helpers. Bound runner
       # contention without skipping tests or extending production deadlines.
       - run: npm test -- --test-concurrency=2
