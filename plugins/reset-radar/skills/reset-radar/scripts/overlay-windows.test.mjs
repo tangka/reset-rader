@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runWindowsOverlay, takeRefreshCommand, windowsOverlayPaths, windowsPayload } from './overlay-windows.mjs';
@@ -136,7 +137,10 @@ test('native card starts a hidden PowerShell host, refreshes through Node, and c
     OPENAI_API_KEY:'private-openai-test-key', NODE_OPTIONS:'--require C:/private/inject.cjs',
     PATH:'C:/private/bin', PSModulePath:'C:/private/modules',
   };
-  class Child extends EventEmitter { kill() { this.killed = true; return true; } }
+  class Child extends EventEmitter {
+    stdout = new PassThrough();
+    kill() { this.killed = true; return true; }
+  }
   class Data {
     terminal = false;
     async refresh(_signal,{manual}) { refreshes += 1; manualValues.push(manual); }
@@ -160,7 +164,9 @@ test('native card starts a hidden PowerShell host, refreshes through Node, and c
       for (const secret of ['test-only-key','C:/private/member-key','private-openai-test-key']) {
         assert.equal(childInput.includes(secret),false);
       }
-      const child = new Child(); queueMicrotask(() => child.emit('spawn')); return child;
+      const child = new Child();
+      queueMicrotask(() => { child.emit('spawn'); child.stdout.write('RESET_RADAR_READY\n'); });
+      return child;
     },
     sleep:async () => controller.abort(),
   });

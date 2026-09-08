@@ -3,6 +3,7 @@
   [Parameter(Mandatory=$true)][string]$CommandPath
 )
 
+$ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 
@@ -54,6 +55,12 @@ $timer.Interval = [TimeSpan]::FromMilliseconds(500)
 $timer.Add_Tick({
   try { $payload = Get-Content -LiteralPath $StatePath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop; Render $payload } catch { Render $null }
 })
-$window.Add_Loaded({ $window.Left = [System.Windows.SystemParameters]::WorkArea.Right - $window.ActualWidth - 24; $window.Top = [System.Windows.SystemParameters]::WorkArea.Bottom - $window.ActualHeight - 24; $timer.Start() })
+$window.Add_Loaded({
+  $window.Left = [System.Windows.SystemParameters]::WorkArea.Right - $window.ActualWidth - 24
+  $window.Top = [System.Windows.SystemParameters]::WorkArea.Bottom - $window.ActualHeight - 24
+  $timer.Start()
+  [Console]::Out.WriteLine('RESET_RADAR_READY')
+  [Console]::Out.Flush()
+})
 $window.Add_Closed({ $timer.Stop() })
 [void]$window.ShowDialog()

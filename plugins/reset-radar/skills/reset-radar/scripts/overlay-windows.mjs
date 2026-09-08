@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { once } from 'node:events';
 import { lstat, rename, unlink } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -8,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { loadConfiguration, readPrivateFile, stateDirectory, writePrivateFile } from './configuration.mjs';
 import { OverlayData } from './overlay-data.mjs';
 import { windowsSystemEnvironment } from './windows-environment.mjs';
+import { rendererError, waitForWindowsRenderer } from './overlay-windows-host.mjs';
 
 const scriptPath = fileURLToPath(new URL('./overlay-windows.ps1', import.meta.url));
 
@@ -77,8 +77,9 @@ async function assertRenderer(script, stat = lstat) {
 export async function runWindowsOverlay({ environment = process.env, platform = process.platform, signal, sessionId = randomUUID(),
   directory = stateDirectory(environment), Data = OverlayData, load = loadConfiguration,
   write = writePrivateFile, read = readPrivateFile, remove = unlink, claim = rename, spawnImpl = spawn,
-  stat = lstat, sleep = (ms, options) => delay(ms, undefined, options), emit = () => {} } = {}) {
+  stat = lstat, sleep = (ms, options) => delay(ms, undefined, options), emit = () => {}, readyTimeoutMs = 15000 } = {}) {
   if (platform !== 'win32') throw new Error('The native radar card is available on Windows only.');
+  signal?.throwIfAborted();
   const configuration = await load(environment);
   const paths = windowsOverlayPaths(resolve(directory), sessionId);
   await assertRenderer(scriptPath, stat);
@@ -89,16 +90,25 @@ export async function runWindowsOverlay({ environment = process.env, platform = 
   let encoded = '';
   let refresh;
   let firstRefresh = true;
+  let rendererFailed = false;
   try {
     await write(paths.statePath, JSON.stringify(windowsPayload(data)));
     const rendererEnvironment = windowsSystemEnvironment(environment);
     child = spawnImpl(windowsPowerShell(rendererEnvironment), [
       '-NoProfile', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-File', scriptPath,
       '-StatePath', paths.statePath, '-CommandPath', paths.commandPath,
-    ], { env: rendererEnvironment, windowsHide: true, stdio: ['ignore', 'ignore', 'ignore'], shell: false });
-    child.once('exit', () => controller.abort());
-    try { await once(child, 'spawn'); }
-    catch { throw new Error('Windows PowerShell could not start the Reset Radar card.'); }
+    ], { env: rendererEnvironment, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'], shell: false });
+    child.on('error', () => { rendererFailed = true; controller.abort(); });
+    child.once('exit', (code) => { rendererFailed ||= code !== 0; controller.abort(); });
+    try { await waitForWindowsRenderer(child, { signal: combined, timeoutMs: readyTimeoutMs }); }
+    catch {
+      if (signal?.aborted) return { reason: 'closed' };
+      throw rendererError();
+    }
+    if (combined.aborted) {
+      if (signal?.aborted || !rendererFailed) return { reason: 'closed' };
+      throw rendererError();
+    }
     emit({ type: 'overlay_attached', mode: 'native-windows' });
     while (!combined.aborted) {
       const manual = firstRefresh || (!data.inFlight && await takeRefreshCommand(paths.commandPath, { read, remove, claim }));
@@ -113,6 +123,7 @@ export async function runWindowsOverlay({ environment = process.env, platform = 
         if (!combined.aborted) throw error;
       }
     }
+    if (rendererFailed && !signal?.aborted) throw rendererError();
     return { reason: 'closed' };
   } finally {
     controller.abort();
