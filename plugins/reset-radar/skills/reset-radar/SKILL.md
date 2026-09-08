@@ -33,7 +33,7 @@ node scripts/reset-radar.mjs history codex --limit 7
 node scripts/reset-radar.mjs history claude --date 2026-09-07
 ```
 
-- Default to `personal` for the user's own Codex reset probability. It reads `account/rateLimits/read` through the locally installed `codex app-server --stdio`; no model inference, reset redemption, login or account changes. It never uploads local quota/reset data.
+- Default to `personal` for the user's own Codex reset probability. It reads `account/rateLimits/read` through a local `app-server --stdio`. On macOS it prefers the verified running desktop's bundled `Contents/Resources/codex`, then a supported app in `/Applications` or `~/Applications`; only without a compatible desktop runtime does it fall back to `codex` on PATH. A separate CLI installation is not required when the bundled runtime works. No model inference, reset redemption, login or account changes; local quota/reset data is never uploaded.
 - Use `overview` for all platforms' **extra reset probability**, explicitly `naturalCycle=exclude`. A server that ignores exclusion is an error; never silently substitute include.
 - Use `status` for official provider service status.
 - Use `history <platform>` for confirmed reset history. Canonical platforms are `codex`, `claude`, `grok`, `antigravity`, `zcode`, `kimi`, `minimax`, and `qwen`.
@@ -83,6 +83,7 @@ Missing Key, missing excluded API data, and compatibility failure are separate s
 
 ## Handle errors
 
+- For runtime setup, `node scripts/codex-runtime.mjs` reports the selected executable without reading credentials or querying an account. A `path` result is a fallback choice, not proof the CLI is installed. `RESET_RADAR_CODEX_APP` may select an absolute macOS `.app` path; `RESET_RADAR_CODEX_PATH` selects an absolute executable and takes precedence. Invalid explicit paths fail rather than silently selecting another runtime; multiple matching desktops require a choice. Keep these settings in the launching process environment. These overrides affect quota reads only, not overlay CDP app verification. Never copy auth files to make a selected runtime work.
 - On `401`, tell the user the Key is invalid or revoked and to rotate it in the Mini Program.
 - On `403`, explain that the API requires an active long-term membership; monthly membership does not include it.
 - On `429`, wait at least the returned `Retry-After`/`retryAfterSeconds`; automated polling waits at least 10 minutes. Never overlap requests.

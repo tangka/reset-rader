@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { resolveCodexRuntime } from './codex-runtime.mjs';
 
 const MAX_OUTPUT_BYTES = 1024 * 1024;
 
@@ -6,7 +7,7 @@ function localError(code) {
   const messages = {
     aborted: 'Local Codex quota lookup was cancelled.',
     timeout: 'Local Codex quota lookup timed out.',
-    unavailable: 'Local Codex quota lookup is unavailable; check that Codex CLI is installed and signed in.',
+    unavailable: 'Local Codex quota lookup is unavailable; check the selected desktop or CLI runtime and its signed-in account.',
     protocol: 'Local Codex quota lookup returned an invalid response.',
     too_large: 'Local Codex quota lookup returned too much output.',
   };
@@ -16,15 +17,34 @@ function localError(code) {
 }
 
 /** Read local account quotas without opening a session, model turn, or authentication flow. */
-export function readLocalCodexRateLimits({
-  codexCommand = 'codex', timeoutMs = 15000, signal, spawnImpl = spawn,
+export async function readLocalCodexRateLimits({
+  codexCommand, timeoutMs = 15000, signal, spawnImpl = spawn,
+  resolveImpl = resolveCodexRuntime, environment = process.env,
 } = {}) {
   if (signal?.aborted) return Promise.reject(localError('aborted'));
-  if (typeof codexCommand !== 'string' || !codexCommand || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+  if ((codexCommand !== undefined && (typeof codexCommand !== 'string' || !codexCommand))
+      || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     return Promise.reject(localError('unavailable'));
   }
+  const startedAt = Date.now();
+  if (codexCommand === undefined) {
+    const timeout = AbortSignal.timeout(Math.ceil(timeoutMs));
+    try {
+      const discoverySignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
+      ({ command: codexCommand } = await resolveImpl({ environment, signal: discoverySignal }));
+      discoverySignal.throwIfAborted();
+    } catch (error) {
+      if (signal?.aborted) throw localError('aborted');
+      if (timeout.aborted) throw localError('timeout');
+      if (/^local_codex_runtime_(?:invalid|ambiguous)$/.test(error.code)) throw error;
+      throw localError('unavailable');
+    }
+  }
+  if (signal?.aborted) throw localError('aborted');
+  const remainingMs = timeoutMs - (Date.now() - startedAt);
+  if (remainingMs <= 0) throw localError('timeout');
   return new Promise((resolve, reject) => {
-    const env = { ...process.env };
+    const env = { ...environment };
     delete env.RESET_RADAR_API_KEY;
     delete env.RESET_RADAR_API_KEY_FILE;
     let child;
@@ -95,7 +115,7 @@ export function readLocalCodexRateLimits({
         }
       }
     };
-    timer = setTimeout(() => finish(localError('timeout')), timeoutMs);
+    timer = setTimeout(() => finish(localError('timeout')), remainingMs);
     signal?.addEventListener('abort', onAbort, { once: true });
     child.on('error', () => finish(localError('unavailable')));
     child.on('exit', () => finish(localError('unavailable')));

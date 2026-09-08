@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { queryRadar, commandTarget } from './api-client.mjs';
 import { readLocalCodexRateLimits } from './local-codex.mjs';
+import { runtimeSetupMessage } from './codex-runtime.mjs';
 import { buildPersonalProbability } from './personal-probability.mjs';
 import { readPrivateFile, writePrivateFile } from './configuration.mjs';
 import { MIN_POLL_INTERVAL_MS } from './monitor.mjs';
@@ -120,8 +121,9 @@ export class OverlayData {
       const overview = await this.query({...this.configuration,
         target:commandTarget(['overview']),signal});
       let rateLimits;
-      try { rateLimits = await this.readLimits({signal}); } catch {
+      try { rateLimits = await this.readLimits({signal}); } catch (error) {
         if (signal?.aborted) return;
+        if (runtimeSetupMessage(error)) throw error;
         rateLimits = null;
       }
       if (signal?.aborted) return;
@@ -130,7 +132,7 @@ export class OverlayData {
       this.inputs = {overview,rateLimits};
     } catch (error) {
       if (signal?.aborted) return;
-      this.failure = messages[error.status] || '数据未就绪，请检查会员 API 与本机额度。';
+      this.failure = runtimeSetupMessage(error) || messages[error.status] || '数据未就绪，请检查会员 API 与本机额度。';
       this.terminal = error.status === 401 || error.status === 403;
       if (error.status === 429) {
         const retry = Number.isFinite(error.retryAfterSeconds) ? Math.max(600,error.retryAfterSeconds) : 600;

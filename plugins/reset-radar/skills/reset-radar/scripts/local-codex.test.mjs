@@ -2,7 +2,12 @@ import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { PassThrough, Writable } from 'node:stream';
 import test from 'node:test';
-import { readLocalCodexRateLimits } from './local-codex.mjs';
+import { readLocalCodexRateLimits as productionRead } from './local-codex.mjs';
+
+// Unit tests must not discover or depend on a desktop installed on the test host.
+const readLocalCodexRateLimits = (options) => productionRead({
+  resolveImpl: async () => ({ command: 'codex', source: 'path' }), ...options,
+});
 
 function fakeProcess(onMessage = () => {}) {
   const child = new EventEmitter();
@@ -138,5 +143,67 @@ test('invalid JSON, invalid results, and excessive stdout or stderr are bounded 
       code: mode === 'stdout' || mode === 'stderr' ? 'local_codex_too_large' : 'local_codex_protocol',
     });
     cleanup(child);
+  }
+});
+
+test('quota reader executes the selected bundled runtime with no CLI on PATH', async () => {
+  const environment = { PATH: '/without-codex', RESET_RADAR_API_KEY: 'never-forward' };
+  const child = fakeProcess((message, process) => {
+    if (message.id === 1) process.reply({ id: 1, result: {} });
+    if (message.id === 2) process.reply({ id: 2, result: { rateLimits: null } });
+  });
+  const result = await productionRead({
+    environment,
+    resolveImpl: async ({ environment: actual, signal }) => {
+      assert.equal(actual, environment);
+      assert.equal(signal.aborted, false);
+      return { command: '/Applications/Codex.app/Contents/Resources/codex', source: 'desktop' };
+    },
+    spawnImpl: (command, args, options) => {
+      assert.equal(command, '/Applications/Codex.app/Contents/Resources/codex');
+      assert.deepEqual(args, ['app-server', '--stdio']);
+      assert.equal(options.shell, false);
+      assert.deepEqual(options.env, { PATH: '/without-codex' });
+      return child;
+    },
+  });
+  assert.deepEqual(result, { rateLimits: null });
+  cleanup(child);
+});
+
+test('explicit programmatic command bypasses discovery for existing callers', async () => {
+  const child = fakeProcess((message, process) => {
+    if (message.id === 1) process.reply({ id: 1, result: {} });
+    if (message.id === 2) process.reply({ id: 2, result: { rateLimits: null } });
+  });
+  await productionRead({ codexCommand: '/local/codex',
+    resolveImpl: () => assert.fail('Explicit command must not trigger discovery'), spawnImpl: () => child });
+  cleanup(child);
+});
+
+test('discovery failures are bounded, redact unknown errors, and never spawn', async () => {
+  for (const mode of ['cancel', 'timeout', 'unknown', 'invalid']) {
+    const controller = new AbortController();
+    let spawned = false;
+    await assert.rejects(productionRead({ signal: controller.signal, timeoutMs: 20,
+      spawnImpl: () => { spawned = true; },
+      resolveImpl: async ({ signal }) => {
+        if (mode === 'cancel') controller.abort(new Error('private cancellation'));
+        if (mode === 'timeout') {
+          await new Promise((resolve) => setTimeout(resolve, 30));
+          signal.throwIfAborted();
+        }
+        if (mode === 'invalid') throw Object.assign(new Error('Invalid runtime configuration.'), {
+          code: 'local_codex_runtime_invalid',
+        });
+        throw new Error('private discovery failure');
+      },
+    }), (error) => {
+      assert.equal(error.code, { cancel: 'local_codex_aborted', timeout: 'local_codex_timeout',
+        unknown: 'local_codex_unavailable', invalid: 'local_codex_runtime_invalid' }[mode]);
+      assert.doesNotMatch(error.message, /private/);
+      return true;
+    });
+    assert.equal(spawned, false);
   }
 });

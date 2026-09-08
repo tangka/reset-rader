@@ -1,6 +1,6 @@
 # 重置雷达 Codex Plugin
 
-用重置雷达长期会员 API Key，结合**本机 Codex 周额度**，查询个人未来 24 小时重置概率。Node.js 22+ 与已登录的 Codex CLI 即可；无第三方运行依赖。
+用重置雷达长期会员 API Key，结合**本机 Codex 周额度**，查询个人未来 24 小时重置概率。需要 Node.js 22+ 与已登录的 Codex 账号；macOS 可复用 Codex 桌面端自带的可执行文件，无需另装 Codex CLI。无第三方运行依赖，`npm` 仅用于开发检查。
 
 ## 计算规则
 
@@ -14,6 +14,22 @@
 
 这是自包含的插件目录，按 [Codex 插件安装规范](https://developers.openai.com/plugins/build/plugins) 安装后，在新任务中使用 `$reset-radar`。分发时只复制本目录，不包含项目 `.env`、private 数据或任何会员 Key。
 
+安装仍使用 `codex plugin` 命令，所选可执行文件需支持 `plugin`。PATH 中没有 `codex` 时，可直接调用已安装的桌面端程序，例如：
+
+```bash
+"/Applications/Codex.app/Contents/Resources/codex" plugin marketplace add https://github.com/tangka/reset-rader.git
+"/Applications/Codex.app/Contents/Resources/codex" plugin add reset-radar@reset-radar
+```
+
+如果你的 Codex 桌面应用包名为 `ChatGPT.app`，对应命令为：
+
+```bash
+"/Applications/ChatGPT.app/Contents/Resources/codex" plugin marketplace add https://github.com/tangka/reset-rader.git
+"/Applications/ChatGPT.app/Contents/Resources/codex" plugin add reset-radar@reset-radar
+```
+
+使用实际安装的 Codex 应用包；仅凭 `ChatGPT.app` 文件名不能确认应用身份。
+
 先在重置雷达小程序“雷达会员 → API Key”获取自己的 Key（仅长期会员）。已打开悬浮雷达时，直接在卡片内粘贴 Key，点击“保存并连接”，无需终端或重启。以后可点“修改 Key”，已有 Key 不会回显。保存成功只表示本机配置已写入；联网结果以卡片实际状态为准。
 
 不使用悬浮框时，也可在本机终端配置，不要粘贴到聊天中：复制 Key 后，在本插件目录运行：
@@ -25,6 +41,20 @@ pbpaste | node skills/reset-radar/scripts/reset-radar.mjs configure --key-stdin
 Key 仅保存到本机 `~/.config/reset-radar/api-key`，权限 600。也支持现有 `RESET_RADAR_API_KEY` 环境变量或 `RESET_RADAR_API_KEY_FILE` 私有文件。不要把 Key 写入命令参数、插件文件、仓库或提醒提示词。代码不会读取 Codex 登录凭证，也不会上传个人额度/时间。
 
 默认服务地址为 `https://api.tangka.online/radar-api/member/v1`，仅在用户明确指定可信自建服务时覆盖 `RESET_RADAR_API_BASE`。服务器必须支持并回显 `naturalCycle: "exclude"`，旧服务忽略参数时插件会明确报错，不会混入公共自然周期。
+
+## 周额度读取程序
+
+macOS 会先查找正在运行的 Codex 桌面应用，再检查 `/Applications`、`~/Applications` 下的常见安装位置。核对应用标识 `com.openai.codex` 后，使用该应用的 `Contents/Resources/codex`；没有找到可用的桌面端程序时，回退到 PATH 中的 `codex`。
+
+自定义安装位置可设置 `RESET_RADAR_CODEX_APP`，值必须是绝对 `.app` 路径；也可用 `RESET_RADAR_CODEX_PATH` 指定可执行文件的绝对路径。显式配置无效时会报错，不回退到其他程序。这两个设置仅用于周额度读取，不扩展悬浮框 CDP 探测或调试启动支持的应用路径，也不代表 Windows/Linux 悬浮框已受支持。
+
+在本插件目录查看最终选择的来源和命令：
+
+```bash
+node skills/reset-radar/scripts/codex-runtime.mjs
+```
+
+此诊断只解析本机程序路径，不读取账户或调用 API。路径探测成功不等于账户登录有效，也不等于所需 app-server 协议兼容；实际个人额度查询成功后，才能确认当前读取链路可用。
 
 ## 使用
 

@@ -66,6 +66,24 @@ test('snapshot expiry and local deadline never remain an available personal fore
   assert.equal(f.data.payload().report,undefined);
 });
 
+test('runtime configuration errors reach the card safely and recover after correction',async () => {
+  for (const code of ['local_codex_runtime_invalid','local_codex_runtime_ambiguous']) {
+    const f = fixture();
+    await f.data.refresh();
+    assert.equal(f.data.payload().status,'ready');
+    f.data.readLimits = async () => { throw Object.assign(new Error('private runtime detail'),{code}); };
+    await f.data.refresh(undefined,{manual:true});
+    assert.equal(f.data.payload().status,'error');
+    assert.match(f.data.payload().message,/RESET_RADAR_CODEX_APP/);
+    assert.doesNotMatch(JSON.stringify(f.data.payload()),/private runtime detail/);
+    assert.equal(f.data.payload().report,undefined);
+    assert.equal(f.data.terminal,false);
+    f.data.readLimits = async () => limits(NOW+25*3600000);
+    await f.data.refresh(undefined,{manual:true});
+    assert.equal(f.data.payload().status,'ready');
+  }
+});
+
 test('ten-minute minimum persists across reopening and fetches never overlap',async () => {
   let release;
   const wait = new Promise(resolve => { release = resolve; });

@@ -10,8 +10,8 @@ This is a standalone plugin repository. You do not need the Reset Radar Mini Pro
 
 ## Requirements
 
-- **Node.js 22 or later**, with `node`, `npm`, and `codex` available in your terminal.
-- Your own signed-in Codex account and a Codex CLI that supports `codex plugin`.
+- **Node.js 22 or later**, with `node` available in your terminal. `npm` is only needed for development checks.
+- Your own signed-in Codex account. On macOS, weekly quota queries can use the executable bundled with Codex desktop; a separate Codex CLI installation is not required. Installation commands need a Codex executable that supports `plugin`.
 - A valid **long-term member API key** from the Reset Radar WeChat Mini Program. Monthly membership does not include API access. Each person must use their own key.
 - The floating card has only been verified with **Codex desktop on macOS**. It uses an unofficial CDP debugging connection, not an official overlay component. App updates may break it; Windows, Linux, and compatibility with every Codex version are not guaranteed.
 
@@ -25,6 +25,22 @@ Run these commands in your terminal:
 codex plugin marketplace add https://github.com/tangka/reset-rader.git
 codex plugin add reset-radar@reset-radar
 ```
+
+If `codex` is not on your PATH, you can run the same commands with the desktop app's bundled executable. For `/Applications/Codex.app`:
+
+```bash
+"/Applications/Codex.app/Contents/Resources/codex" plugin marketplace add https://github.com/tangka/reset-rader.git
+"/Applications/Codex.app/Contents/Resources/codex" plugin add reset-radar@reset-radar
+```
+
+If your Codex desktop bundle is named `ChatGPT.app` instead, use its actual path:
+
+```bash
+"/Applications/ChatGPT.app/Contents/Resources/codex" plugin marketplace add https://github.com/tangka/reset-rader.git
+"/Applications/ChatGPT.app/Contents/Resources/codex" plugin add reset-radar@reset-radar
+```
+
+Use the bundle that is actually installed; a matching filename alone does not establish that it is Codex. You can substitute the same quoted executable path for `codex` in the local installation and update commands below.
 
 The repository is [tangka/reset-rader](https://github.com/tangka/reset-rader). Both the plugin and marketplace identifiers are `reset-radar`. The repository is public, but the member API still requires your own key.
 
@@ -47,7 +63,17 @@ Installing the plugin does not automatically start the card or scheduled reminde
 
 ## First launch and API key setup
 
-Check `node --version` and `codex --version` in the terminal you will use to launch the plugin. Both commands must be on that terminal's PATH; installing the desktop app alone does not guarantee that the `codex` command is available.
+Check `node --version` in the terminal you will use to launch the plugin. For weekly quota queries, the plugin automatically looks for a running Codex desktop app and then common locations under `/Applications` and `~/Applications`, validates the bundle identifier `com.openai.codex`, and uses its `Contents/Resources/codex`. If no suitable desktop executable is found, it falls back to `codex` on PATH.
+
+For a custom installation, set `RESET_RADAR_CODEX_APP` to the absolute `.app` path, or `RESET_RADAR_CODEX_PATH` to an absolute executable path. An invalid explicit override produces an error instead of silently falling back. These settings select the weekly quota reader; they do not change the floating card's CDP discovery or launch path support.
+
+From a local repository, inspect which executable would be selected without reading your account or calling an API:
+
+```bash
+node plugins/reset-radar/skills/reset-radar/scripts/codex-runtime.mjs
+```
+
+The diagnostic prints the selected source and command. Finding an executable does not establish account login or compatibility with the required app-server protocol; a personal quota query must still succeed.
 
 1. The plugin checks whether the current Codex app exposes a compatible local debugging endpoint. If not, it explains the risks. **Only with your consent**, you can quit Codex normally and relaunch it in debugging mode from an external terminal. The plugin does not automatically kill processes, modify the app bundle, or disable security features.
 2. Once the card is connected, paste your member API key into its password field and click **Save and connect** (`保存并连接`). Do not paste the key into chat.

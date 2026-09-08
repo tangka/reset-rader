@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { commandTarget, queryRadar, safeJson, RadarApiError } from './api-client.mjs';
 import { loadConfiguration, stateDirectory, readPrivateFile, writePrivateFile, configureKey } from './configuration.mjs';
 import { readLocalCodexRateLimits } from './local-codex.mjs';
+import { runtimeSetupMessage } from './codex-runtime.mjs';
 import { buildPersonalProbability } from './personal-probability.mjs';
 import { checkChanges, runWatch } from './monitor.mjs';
 
@@ -26,8 +27,10 @@ export async function personal(configuration, {signal, readLimits = readLocalCod
   query = queryRadar, now = Date.now()} = {}) {
   const overview = await query({...configuration,target:commandTarget(['overview']),signal});
   let rateLimits;
-  try { rateLimits = await readLimits({signal}); } catch {
+  try { rateLimits = await readLimits({signal}); } catch (error) {
     if (signal?.aborted) throw new Error('Cancelled.');
+    const setupMessage = runtimeSetupMessage(error);
+    if (setupMessage) throw Object.assign(new Error(setupMessage), {code:error.code});
     rateLimits = null;
   }
   return buildPersonalProbability(overview,rateLimits,{now});

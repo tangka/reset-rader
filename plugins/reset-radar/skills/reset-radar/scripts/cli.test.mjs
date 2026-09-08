@@ -67,6 +67,19 @@ test('a unavailable local reader does not invent a personal reset or reuse publi
   assert.deepEqual(result.weeklyWindows,[]);
 });
 
+test('personal surfaces invalid and ambiguous runtime settings without raw error text', async () => {
+  for (const code of ['local_codex_runtime_invalid', 'local_codex_runtime_ambiguous']) {
+    await assert.rejects(personal(configuration, {now, query:async () => overview,
+      readLimits:async () => { throw Object.assign(new Error('private raw diagnostic'), {code}); },
+    }), (error) => {
+      assert.equal(error.code, code);
+      assert.match(error.message, /RESET_RADAR_CODEX_APP/);
+      assert.doesNotMatch(error.message, /private/);
+      return true;
+    });
+  }
+});
+
 test('independent checks persist deduplication without storing the Key or raw account data', async () => {
   await temporary(async (directory) => {
     const sample = async () => personal(configuration,{now,query:async () => overview,

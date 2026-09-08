@@ -10,8 +10,8 @@
 
 ## 使用前准备
 
-- Node.js **22 或更新版本**，终端中能运行 `node`、`npm` 和 `codex`。
-- 已登录自己的 Codex 账号；Codex CLI 需支持 `codex plugin` 命令。
+- Node.js **22 或更新版本**，终端中能运行 `node`；`npm` 仅用于开发检查。
+- 已登录自己的 Codex 账号。macOS 周额度查询可复用 Codex 桌面端自带的可执行文件，无需另装 Codex CLI；安装命令需要所用可执行文件支持 `plugin`。
 - 重置雷达小程序的有效**长期会员 API Key**；月度会员不包含 API 权益，每个人使用自己的 Key。
 - 悬浮框目前只验证了 **macOS Codex 桌面端**。这是非官方 CDP 调试接入，不是官方悬浮组件；客户端升级可能使其失效，不承诺 Windows/Linux 或所有 Codex 版本兼容。
 
@@ -25,6 +25,22 @@
 codex plugin marketplace add https://github.com/tangka/reset-rader.git
 codex plugin add reset-radar@reset-radar
 ```
+
+如果 PATH 中没有 `codex`，可以直接用桌面端自带的可执行文件运行相同命令。应用位于 `/Applications/Codex.app` 时：
+
+```bash
+"/Applications/Codex.app/Contents/Resources/codex" plugin marketplace add https://github.com/tangka/reset-rader.git
+"/Applications/Codex.app/Contents/Resources/codex" plugin add reset-radar@reset-radar
+```
+
+如果你的 Codex 桌面应用包名为 `ChatGPT.app`，则使用对应的实际路径：
+
+```bash
+"/Applications/ChatGPT.app/Contents/Resources/codex" plugin marketplace add https://github.com/tangka/reset-rader.git
+"/Applications/ChatGPT.app/Contents/Resources/codex" plugin add reset-radar@reset-radar
+```
+
+只使用实际安装的 Codex 应用包，文件名相同并不代表应用就是 Codex。下方本地安装和更新命令中的 `codex` 也可以替换成上述带引号的可执行文件路径。
 
 项目仓库为 [tangka/reset-rader](https://github.com/tangka/reset-rader)，插件与 marketplace 的安装标识均为 `reset-radar`。仓库公开，会员接口仍需要你自己的 Key。
 
@@ -47,7 +63,17 @@ codex plugin add reset-radar@reset-radar
 
 ## 首次打开与填写 Key
 
-先在将用于启动插件的终端确认命令可用：`node --version`、`codex --version`。它们必须在该终端的 PATH 中；只安装桌面应用并不保证 `codex` 命令可用。
+先在将用于启动插件的终端确认 `node --version` 可用。查询周额度时，插件会先查找正在运行的 Codex 桌面应用，再检查 `/Applications`、`~/Applications` 下的常见位置，核对应用标识 `com.openai.codex` 后使用其 `Contents/Resources/codex`。没有找到可用的桌面端程序时，再使用 PATH 中的 `codex`。
+
+自定义安装位置可通过 `RESET_RADAR_CODEX_APP` 指定绝对 `.app` 路径，或通过 `RESET_RADAR_CODEX_PATH` 指定可执行文件的绝对路径。显式配置无效时会报错，不会悄悄回退。这些配置只选择周额度读取程序，不改变悬浮卡片的 CDP 探测与调试启动所支持的应用路径。
+
+在本地仓库根目录运行以下命令，可查看将使用的程序来源和路径，不读取账户或调用 API：
+
+```bash
+node plugins/reset-radar/skills/reset-radar/scripts/codex-runtime.mjs
+```
+
+找到程序仅表示路径解析成功；账户登录和所需 app-server 协议是否兼容，仍需通过实际个人额度查询确认。
 
 1. 插件先检测当前 Codex 是否有可用的本机调试入口。没有时，会说明风险；**获得你同意后**，由你正常退出 Codex，再从外部终端调试启动。不会自动杀进程、改应用包或关闭安全功能。
 2. 连接成功后，在卡片密码框粘贴自己的会员 Key，点击“保存并连接”。不要把 Key 发到聊天里。
