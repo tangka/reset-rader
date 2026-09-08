@@ -44,7 +44,9 @@ export async function readLocalCodexRateLimits({
   const remainingMs = timeoutMs - (Date.now() - startedAt);
   if (remainingMs <= 0) throw localError('timeout');
   return new Promise((resolve, reject) => {
-    const env = { ...environment };
+    const pathKey = Object.keys(environment).find((key) => key.toUpperCase() === 'PATH');
+    const env = { ...environment, PATH: pathKey ? environment[pathKey] : undefined };
+    if (pathKey && pathKey !== 'PATH') delete env[pathKey];
     delete env.RESET_RADAR_API_KEY;
     delete env.RESET_RADAR_API_KEY_FILE;
     let child;

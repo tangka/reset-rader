@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
 import * as filesystem from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { isAbsolute, join, resolve, sep } from 'node:path';
+import { posix, resolve, win32 } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
@@ -19,12 +19,16 @@ function runtimeError(code, message) {
   return Object.assign(new Error(message), { code: `local_codex_runtime_${code}` });
 }
 
-function absolutePath(value) {
-  return typeof value === 'string' && isAbsolute(value) && !/[\x00-\x1f\x7f]/.test(value);
+function pathImplementation(platform) {
+  return platform === 'win32' ? win32 : posix;
 }
 
-async function executable(path, fsImpl) {
-  if (!absolutePath(path)) throw new Error('Invalid path.');
+function absolutePath(value, pathImpl) {
+  return typeof value === 'string' && pathImpl.isAbsolute(value) && !/[\x00-\x1f\x7f]/.test(value);
+}
+
+async function executable(path, fsImpl, pathImpl) {
+  if (!absolutePath(path, pathImpl)) throw new Error('Invalid path.');
   const actual = await fsImpl.realpath(path);
   if (!(await fsImpl.stat(actual)).isFile()) throw new Error('Not a file.');
   await fsImpl.access(actual, constants.X_OK);
@@ -35,9 +39,10 @@ async function executable(path, fsImpl) {
 export async function resolveCodexRuntime({ environment = process.env, platform = process.platform,
   home = homedir(), fsImpl = filesystem, executeImpl = execute, signal } = {}) {
   signal?.throwIfAborted();
+  const paths = pathImplementation(platform);
   if (Object.hasOwn(environment, 'RESET_RADAR_CODEX_PATH')) {
     try {
-      const command = await executable(environment.RESET_RADAR_CODEX_PATH, fsImpl);
+      const command = await executable(environment.RESET_RADAR_CODEX_PATH, fsImpl, paths);
       signal?.throwIfAborted();
       return { command, source: 'explicit' };
     } catch {
@@ -52,16 +57,16 @@ export async function resolveCodexRuntime({ environment = process.env, platform 
     env: { PATH: '/usr/bin:/bin:/usr/sbin:/sbin' },
   });
   const bundleRuntime = async (path) => {
-    if (!absolutePath(path) || !path.endsWith('.app')) return null;
+    if (!absolutePath(path, paths) || !path.endsWith('.app')) return null;
     try {
       const appPath = await fsImpl.realpath(path);
       if (!(await fsImpl.stat(appPath)).isDirectory()) return null;
       const { stdout } = await inspect('/usr/libexec/PlistBuddy',
-        ['-c', 'Print :CFBundleIdentifier', join(appPath, 'Contents/Info.plist')]);
+        ['-c', 'Print :CFBundleIdentifier', paths.join(appPath, 'Contents/Info.plist')]);
       if (stdout.trim() !== 'com.openai.codex') return null;
-      const command = await executable(join(appPath, 'Contents/Resources/codex'), fsImpl);
+      const command = await executable(paths.join(appPath, 'Contents/Resources/codex'), fsImpl, paths);
       // Do not follow an embedded executable link out of the verified app bundle.
-      if (!command.startsWith(appPath + sep)) return null;
+      if (!command.startsWith(appPath + paths.sep)) return null;
       signal?.throwIfAborted();
       return { command, source: 'desktop', appPath };
     } catch {
@@ -99,7 +104,7 @@ export async function resolveCodexRuntime({ environment = process.env, platform 
     const active = await selectBundle(running);
     if (active) return active;
     const installed = await selectBundle([
-      join(home, 'Applications/Codex.app'), join(home, 'Applications/ChatGPT.app'),
+      paths.join(home, 'Applications/Codex.app'), paths.join(home, 'Applications/ChatGPT.app'),
       '/Applications/Codex.app', '/Applications/ChatGPT.app',
     ]);
     if (installed) return installed;

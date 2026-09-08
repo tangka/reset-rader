@@ -26,10 +26,11 @@ test('configuration is explicit, private, and reusable without exporting a Key',
     const env = {RESET_RADAR_STATE_DIR:directory};
     await assert.rejects(loadConfiguration(env), /Set up/);
     await configureKey(Readable.from([key]),env);
-    assert.equal((await stat(join(directory,'api-key'))).mode & 0o777,0o600);
+    if (process.platform !== 'win32') assert.equal((await stat(join(directory,'api-key'))).mode & 0o777,0o600);
     assert.equal((await loadConfiguration(env)).apiKey,key);
     await chmod(join(directory,'api-key'),0o644);
-    await assert.rejects(loadConfiguration(env), /private radar/);
+    if (process.platform === 'win32') assert.equal((await loadConfiguration(env)).apiKey,key);
+    else await assert.rejects(loadConfiguration(env), /private radar/);
     await assert.rejects(configureKey(Readable.from(['bad']),env),/Invalid/);
   });
 });

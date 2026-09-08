@@ -19,7 +19,7 @@ test('real exclusive owner-only locks serialize callers and release after succes
   const held = new Promise(resolve => { release = resolve; });
   const order = [];
   const first = withCooldownLock(path,async () => {
-    assert.equal((await stat(`${path}.lock`)).mode & 0o777,0o600);
+    if (process.platform !== 'win32') assert.equal((await stat(`${path}.lock`)).mode & 0o777,0o600);
     order.push('first'); entered(); await held; order.push('first-finished');
   });
   await started;

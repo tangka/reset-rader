@@ -11,9 +11,9 @@ This is a standalone plugin repository. You do not need the Reset Radar Mini Pro
 ## Requirements
 
 - **Node.js 22 or later**, with `node` available in your terminal. `npm` is only needed for development checks.
-- Your own signed-in Codex account. On macOS, weekly quota queries can use the executable bundled with Codex desktop; a separate Codex CLI installation is not required. Installation commands need a Codex executable that supports `plugin`.
+- Your own signed-in Codex account. On macOS, weekly quota queries can use the executable bundled with Codex desktop; on Windows, make sure `codex` is on `PATH` or set `RESET_RADAR_CODEX_PATH` to an absolute `codex.exe` path. Installation commands need a Codex executable that supports `plugin`.
 - A valid **long-term member API key** from the Reset Radar WeChat Mini Program. Monthly membership does not include API access. Each person must use their own key.
-- The floating card has only been verified with **Codex desktop on macOS**. It uses an unofficial CDP debugging connection, not an official overlay component. App updates may break it; Windows, Linux, and compatibility with every Codex version are not guaranteed.
+- Regular queries and monitoring are supported on Windows, macOS, and Linux. The floating card remains verified only with **Codex desktop on macOS**: it uses an unofficial CDP debugging connection, not an official overlay component. App updates may break it.
 
 ## Installation
 
@@ -63,7 +63,7 @@ Installing the plugin does not automatically start the card or scheduled reminde
 
 ## First launch and API key setup
 
-Check `node --version` in the terminal you will use to launch the plugin. For weekly quota queries, the plugin automatically looks for a running Codex desktop app and then common locations under `/Applications` and `~/Applications`, validates the bundle identifier `com.openai.codex`, and uses its `Contents/Resources/codex`. If no suitable desktop executable is found, it falls back to `codex` on PATH.
+Check `node --version` in the terminal you will use to launch the plugin. On macOS, weekly quota queries automatically look for a running Codex desktop app and then common locations under `/Applications` and `~/Applications`, validate the bundle identifier `com.openai.codex`, and use its `Contents/Resources/codex`. On Windows and Linux, the plugin uses `codex` on `PATH`.
 
 For a custom installation, set `RESET_RADAR_CODEX_APP` to the absolute `.app` path, or `RESET_RADAR_CODEX_PATH` to an absolute executable path. An invalid explicit override produces an error instead of silently falling back. These settings select the weekly quota reader; they do not change the floating card's CDP discovery or launch path support.
 
@@ -89,9 +89,15 @@ If you use regular queries without the floating card, configure your key in the 
 pbpaste | node plugins/reset-radar/skills/reset-radar/scripts/reset-radar.mjs configure --key-stdin
 ```
 
+On Windows PowerShell, use:
+
+```powershell
+Get-Clipboard | node plugins/reset-radar/skills/reset-radar/scripts/reset-radar.mjs configure --key-stdin
+```
+
 See the [detailed plugin guide (Chinese)](plugins/reset-radar/README.md) for more commands, debugging setup, error handling, and reminders.
 
-### Manual launch from an external terminal (local repository)
+### Manual macOS floating-card launch from an external terminal (local repository)
 
 From the repository root, check the current connection:
 
@@ -116,7 +122,7 @@ Keep the final terminal process running. If the initial check already succeeded,
 
 ## Data and permissions
 
-- Your key is saved locally at `~/.config/reset-radar/api-key` with file permissions `600`. It is sent only to the configured member API for authentication. Do not share, commit, or bundle your key.
+- Your key is saved locally at `~/.config/reset-radar/api-key` with file permissions `600` on macOS/Linux, or under `%LOCALAPPDATA%\\reset-radar\\api-key` on Windows. It is sent only to the configured member API for authentication. Do not share, commit, or bundle your key.
 - Personal usage and reset times come from a local, read-only Codex interface and are not uploaded to the radar API. Only the general Codex weekly quota is used; model-specific quotas are not monitored.
 - The radar supplies extra reset probability **excluding the natural reset cycle**. If your weekly quota is scheduled to reset naturally within the next 24 hours, your personal probability is 100%; otherwise, it uses the extra reset probability. This is a schedule-based estimate, not confirmation that an extra reset has happened. Missing or expired data is shown as unavailable.
 - Automatic refresh runs every 10 minutes by default. Requests share an account-level limit of 30 requests per 10 minutes and 2 concurrent requests. Manual refresh also respects HTTP 429 waiting periods. Rotating your key does not reset your account's allowance.
