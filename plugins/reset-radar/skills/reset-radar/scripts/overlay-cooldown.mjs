@@ -4,7 +4,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 /** Hold only the shared cooldown read/modify/write, never the network request. */
 export async function withCooldownLock(path, operation, { signal, fsImpl = filesystem,
-  timeoutMs = 2000, clock = Date.now, sleep = (ms, options) => delay(ms, undefined, options) } = {}) {
+  timeoutMs = 2000, clock = Date.now, sleep = (ms, options) => delay(ms, undefined, options),
+  platform = process.platform } = {}) {
   signal?.throwIfAborted();
   const lockPath = `${path}.lock`;
   await fsImpl.mkdir(dirname(path), { recursive: true, mode: 0o700 });
@@ -24,8 +25,9 @@ export async function withCooldownLock(path, operation, { signal, fsImpl = files
   let identity;
   try {
     identity = await handle.stat();
-    if (!identity.isFile() || (identity.mode & 0o077)
-        || (process.getuid && identity.uid !== process.getuid())) {
+    const unsafePermissions = platform !== 'win32' && ((identity.mode & 0o077)
+      || (process.getuid && identity.uid !== process.getuid()));
+    if (!identity.isFile() || unsafePermissions) {
       throw new Error('Overlay cooldown lock must be an owner-only regular file.');
     }
     signal?.throwIfAborted();

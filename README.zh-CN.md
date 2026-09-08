@@ -11,9 +11,9 @@
 ## 使用前准备
 
 - Node.js **22 或更新版本**，终端中能运行 `node`；`npm` 仅用于开发检查。
-- 已登录自己的 Codex 账号。macOS 周额度查询可复用 Codex 桌面端自带的可执行文件，无需另装 Codex CLI；安装命令需要所用可执行文件支持 `plugin`。
+- 已登录自己的 Codex 账号。macOS 周额度查询可复用 Codex 桌面端自带的可执行文件，无需另装 Codex CLI；Windows 请确保 `codex` 已在 `PATH` 中，或用 `RESET_RADAR_CODEX_PATH` 指定绝对 `codex.exe` 路径；安装命令需要所用可执行文件支持 `plugin`。
 - 重置雷达小程序的有效**长期会员 API Key**；月度会员不包含 API 权益，每个人使用自己的 Key。
-- 悬浮框目前只验证了 **macOS Codex 桌面端**。这是非官方 CDP 调试接入，不是官方悬浮组件；客户端升级可能使其失效，不承诺 Windows/Linux 或所有 Codex 版本兼容。
+- Windows、macOS 与 Linux 均支持普通查询和监控。悬浮框目前只验证了 **macOS Codex 桌面端**：这是非官方 CDP 调试接入，不是官方悬浮组件；客户端升级可能使其失效。
 
 ## 安装
 
@@ -63,7 +63,7 @@ codex plugin add reset-radar@reset-radar
 
 ## 首次打开与填写 Key
 
-先在将用于启动插件的终端确认 `node --version` 可用。查询周额度时，插件会先查找正在运行的 Codex 桌面应用，再检查 `/Applications`、`~/Applications` 下的常见位置，核对应用标识 `com.openai.codex` 后使用其 `Contents/Resources/codex`。没有找到可用的桌面端程序时，再使用 PATH 中的 `codex`。
+先在将用于启动插件的终端确认 `node --version` 可用。macOS 查询周额度时，插件会先查找正在运行的 Codex 桌面应用，再检查 `/Applications`、`~/Applications` 下的常见位置，核对应用标识 `com.openai.codex` 后使用其 `Contents/Resources/codex`。Windows 和 Linux 使用 `PATH` 中的 `codex`。
 
 自定义安装位置可通过 `RESET_RADAR_CODEX_APP` 指定绝对 `.app` 路径，或通过 `RESET_RADAR_CODEX_PATH` 指定可执行文件的绝对路径。显式配置无效时会报错，不会悄悄回退。这些配置只选择周额度读取程序，不改变悬浮卡片的 CDP 探测与调试启动所支持的应用路径。
 
@@ -89,9 +89,15 @@ node plugins/reset-radar/skills/reset-radar/scripts/codex-runtime.mjs
 pbpaste | node plugins/reset-radar/skills/reset-radar/scripts/reset-radar.mjs configure --key-stdin
 ```
 
+Windows PowerShell 使用：
+
+```powershell
+Get-Clipboard | node plugins/reset-radar/skills/reset-radar/scripts/reset-radar.mjs configure --key-stdin
+```
+
 更多命令、调试启动、错误处理和提醒设置见 [插件使用说明](plugins/reset-radar/README.md)。
 
-### 外部终端手动启动（本地仓库方式）
+### macOS 悬浮卡片外部终端手动启动（本地仓库方式）
 
 在本仓库根目录执行检测：
 
@@ -116,7 +122,7 @@ node plugins/reset-radar/skills/reset-radar/scripts/reset-radar.mjs overlay star
 
 ## 数据与权限
 
-- Key 保存在本机 `~/.config/reset-radar/api-key`，文件权限为 `600`，只发送到配置的会员 API 用于鉴权。不要共用、提交或打包自己的 Key。
+- macOS/Linux 的 Key 保存在本机 `~/.config/reset-radar/api-key`，文件权限为 `600`；Windows 保存至 `%LOCALAPPDATA%\\reset-radar\\api-key`。Key 只发送到配置的会员 API 用于鉴权。不要共用、提交或打包自己的 Key。
 - 个人用量和重置时间由本机 Codex 的只读接口提供，不上传到雷达 API；只使用通用 Codex 周额度，不监听模型专属额度。
 - 雷达返回**不含自然周期**的额外重置概率。若自己的周额度将在未来 24 小时内自然重置，个人数值为 100%；否则采用额外重置概率。它是时间表推算，不表示额外重置已经发生；数据缺失或过期会显示不可用。
 - 默认每 10 分钟刷新一次；会员账户共用 30 次/10 分钟、并发 2 的服务端限额，手动刷新也遵守 429 等待时间。更换 Key 不重置账户额度。

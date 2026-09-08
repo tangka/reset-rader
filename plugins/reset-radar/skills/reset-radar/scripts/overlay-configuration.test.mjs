@@ -4,7 +4,7 @@ import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DEFAULT_API_BASE } from './api-client.mjs';
-import { loadConfiguration, writePrivateFile } from './configuration.mjs';
+import { loadConfiguration, stateDirectory, writePrivateFile } from './configuration.mjs';
 import { saveOverlayKey } from './overlay-configuration.mjs';
 
 const KEY = `rr_live_${'a'.repeat(12)}_${'b'.repeat(43)}`;
@@ -25,6 +25,17 @@ function safeFailure(code, forbidden) {
   };
 }
 
+test('Windows stores the default private state below LocalAppData', { skip: process.platform !== 'win32' }, async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'radar-local-app-data-'));
+  t.after(() => rm(directory, {recursive:true, force:true}));
+  const environment = {LOCALAPPDATA:directory};
+  const path = join(directory, 'reset-radar', 'api-key');
+  assert.equal(stateDirectory(environment), join(directory, 'reset-radar'));
+  await saveOverlayKey(KEY, environment);
+  assert.equal(await readFile(path, 'utf8'), `${KEY}\n`);
+  assert.equal((await loadConfiguration(environment)).apiKey, KEY);
+});
+
 test('missing Key becomes a loadable private configuration after saving', async t => {
   const {environment, path} = await fixture(t);
   await assert.rejects(loadConfiguration(environment), /Set up/);
@@ -32,7 +43,7 @@ test('missing Key becomes a loadable private configuration after saving', async 
   assert.deepEqual(configuration, {apiBase:DEFAULT_API_BASE, apiKey:KEY});
   assert.deepEqual(await loadConfiguration(environment), configuration);
   assert.equal(await readFile(path, 'utf8'), `${KEY}\n`);
-  assert.equal((await stat(path)).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal((await stat(path)).mode & 0o777, 0o600);
 });
 
 test('replacement saves and loads the new Key without changing the chosen API base', async t => {
@@ -42,7 +53,7 @@ test('replacement saves and loads the new Key without changing the chosen API ba
   const replacement = await saveOverlayKey(REPLACEMENT, environment);
   assert.deepEqual(replacement, {apiBase:'https://example.com/member/v1', apiKey:REPLACEMENT});
   assert.equal(await readFile(path, 'utf8'), `${REPLACEMENT}\n`);
-  assert.equal((await stat(path)).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal((await stat(path)).mode & 0o777, 0o600);
 });
 
 test('the configured Key file is honored instead of the default state file', async t => {
@@ -50,7 +61,7 @@ test('the configured Key file is honored instead of the default state file', asy
   environment.RESET_RADAR_API_KEY_FILE = join(directory, 'selected', 'member-key');
   await saveOverlayKey(KEY, environment);
   assert.equal((await loadConfiguration(environment)).apiKey, KEY);
-  assert.equal((await stat(environment.RESET_RADAR_API_KEY_FILE)).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal((await stat(environment.RESET_RADAR_API_KEY_FILE)).mode & 0o777, 0o600);
   await assert.rejects(stat(path), {code:'ENOENT'});
 });
 

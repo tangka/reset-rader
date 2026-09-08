@@ -1,6 +1,6 @@
 # 重置雷达 Codex Plugin
 
-用重置雷达长期会员 API Key，结合**本机 Codex 周额度**，查询个人未来 24 小时重置概率。需要 Node.js 22+ 与已登录的 Codex 账号；macOS 可复用 Codex 桌面端自带的可执行文件，无需另装 Codex CLI。无第三方运行依赖，`npm` 仅用于开发检查。
+用重置雷达长期会员 API Key，结合**本机 Codex 周额度**，查询个人未来 24 小时重置概率。需要 Node.js 22+ 与已登录的 Codex 账号；macOS 可复用 Codex 桌面端自带的可执行文件，无需另装 Codex CLI；Windows 请确保 `codex` 在 `PATH` 中，或设置 `RESET_RADAR_CODEX_PATH` 指向绝对 `codex.exe`。无第三方运行依赖，`npm` 仅用于开发检查。
 
 ## 计算规则
 
@@ -38,13 +38,19 @@
 pbpaste | node skills/reset-radar/scripts/reset-radar.mjs configure --key-stdin
 ```
 
-Key 仅保存到本机 `~/.config/reset-radar/api-key`，权限 600。也支持现有 `RESET_RADAR_API_KEY` 环境变量或 `RESET_RADAR_API_KEY_FILE` 私有文件。不要把 Key 写入命令参数、插件文件、仓库或提醒提示词。代码不会读取 Codex 登录凭证，也不会上传个人额度/时间。
+Windows PowerShell：
+
+```powershell
+Get-Clipboard | node skills/reset-radar/scripts/reset-radar.mjs configure --key-stdin
+```
+
+macOS/Linux 的 Key 仅保存到本机 `~/.config/reset-radar/api-key`，权限 600；Windows 保存至 `%LOCALAPPDATA%\\reset-radar\\api-key`。也支持现有 `RESET_RADAR_API_KEY` 环境变量或 `RESET_RADAR_API_KEY_FILE` 私有文件。不要把 Key 写入命令参数、插件文件、仓库或提醒提示词。代码不会读取 Codex 登录凭证，也不会上传个人额度/时间。
 
 默认服务地址为 `https://api.tangka.online/radar-api/member/v1`，仅在用户明确指定可信自建服务时覆盖 `RESET_RADAR_API_BASE`。服务器必须支持并回显 `naturalCycle: "exclude"`，旧服务忽略参数时插件会明确报错，不会混入公共自然周期。
 
 ## 周额度读取程序
 
-macOS 会先查找正在运行的 Codex 桌面应用，再检查 `/Applications`、`~/Applications` 下的常见安装位置。核对应用标识 `com.openai.codex` 后，使用该应用的 `Contents/Resources/codex`；没有找到可用的桌面端程序时，回退到 PATH 中的 `codex`。
+macOS 会先查找正在运行的 Codex 桌面应用，再检查 `/Applications`、`~/Applications` 下的常见安装位置。核对应用标识 `com.openai.codex` 后，使用该应用的 `Contents/Resources/codex`；没有找到可用的桌面端程序时，回退到 PATH 中的 `codex`。Windows/Linux 使用 PATH 中的 `codex`。
 
 自定义安装位置可设置 `RESET_RADAR_CODEX_APP`，值必须是绝对 `.app` 路径；也可用 `RESET_RADAR_CODEX_PATH` 指定可执行文件的绝对路径。显式配置无效时会报错，不回退到其他程序。这两个设置仅用于周额度读取，不扩展悬浮框 CDP 探测或调试启动支持的应用路径，也不代表 Windows/Linux 悬浮框已受支持。
 
@@ -93,7 +99,7 @@ node skills/reset-radar/scripts/reset-radar.mjs overlay doctor
 node skills/reset-radar/scripts/reset-radar.mjs overlay start
 ```
 
-仅支持已验证的 macOS Codex 主界面目标；无接口会明确报错，不自动重启。若列出多个窗口，指定 `--port <端口> --target <窗口ID>`。卡片内数据每 10 分钟自动查询，倒计时本地每秒更新，不运行额外 SDK 研判。点击顶部“−”左侧的“↻”可立即刷新雷达与本机周额度，读取期间图标旋转并禁用，重复点击不排队。手动刷新不绕过服务端 429 等待时间，重开卡片仍遵守限流。Key 由用户主动在密码框中输入，经当前卡片专用的一次性本机通道交给 Node 保存；提交立即清空输入，不写入聊天、日志、URL 或浏览器存储，也不把已保存 Key 送回卡片。Key 只发给配置的会员 API 鉴权。若由 `RESET_RADAR_API_KEY` 环境变量提供，则不能在卡片内覆盖，需先移除该变量，避免下次启动仍用旧值。
+仅支持已验证的 macOS Codex 主界面目标；Windows/Linux 使用普通查询和监控，不支持悬浮卡片。无接口会明确报错，不自动重启。若列出多个窗口，指定 `--port <端口> --target <窗口ID>`。卡片内数据每 10 分钟自动查询，倒计时本地每秒更新，不运行额外 SDK 研判。点击顶部“−”左侧的“↻”可立即刷新雷达与本机周额度，读取期间图标旋转并禁用，重复点击不排队。手动刷新不绕过服务端 429 等待时间，重开卡片仍遵守限流。Key 由用户主动在密码框中输入，经当前卡片专用的一次性本机通道交给 Node 保存；提交立即清空输入，不写入聊天、日志、URL 或浏览器存储，也不把已保存 Key 送回卡片。Key 只发给配置的会员 API 鉴权。若由 `RESET_RADAR_API_KEY` 环境变量提供，则不能在卡片内覆盖，需先移除该变量，避免下次启动仍用旧值。
 
 若当前客户端没有调试入口，正常退出 Codex 后，在外部终端运行：
 

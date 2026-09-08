@@ -1,6 +1,6 @@
 {
   "name": "reset-radar",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "重置雷达会员 API：结合本机 Codex 周额度，计算个人重置概率并按需提醒。",
   "author": {
     "name": "唐卡/Tangka"
