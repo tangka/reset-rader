@@ -17,13 +17,16 @@ const script = fileURLToPath(new URL('./windows-startup-probe.ps1', import.meta.
 const systemPath = win32.join(process.env.SystemRoot, 'System32');
 const modulePath = win32.join(systemPath, 'WindowsPowerShell', 'v1.0', 'Modules');
 const safeFull = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/key|token|secret|password|credential|cookie|authorization/i.test(name)));
+console.log(JSON.stringify({systemModules: modulePath, moduleDirectories: process.env.PSModulePath?.split(';')}));
+const moduleInfo = spawnSync(executable, ['-NoLogo','-NoProfile','-NonInteractive','-Command',
+  '[Console]::Out.WriteLine($PSHOME); [Console]::Out.WriteLine((Get-Command Join-Path).Module.Path); [Console]::Out.WriteLine((Get-Command Add-Type).Module.Path)'],
+{env:safeFull, shell:false, windowsHide:true, encoding:'utf8', timeout:5000, maxBuffer:65536});
+console.log(JSON.stringify({moduleInfo:moduleInfo.stdout?.trim().split(/\r?\n/), status:moduleInfo.status}));
 for (const [name, env] of [
-  ['pathext-file', { ...minimal, PATHEXT: '.COM;.EXE;.BAT;.CMD' }],
-  ['home-file', { ...minimal, HOMEDRIVE: process.env.HOMEDRIVE, HOMEPATH: process.env.HOMEPATH }],
-  ['programdata-file', { ...minimal, ProgramData: process.env.ProgramData }],
-  ['full-modules-file', { ...minimal, PSModulePath: process.env.PSModulePath }],
-  ['full-path-file', { ...minimal, PATH: process.env.PATH }],
-  ['standard-pathext-file', { ...standard, PATH: systemPath, PSModulePath: modulePath, PATHEXT: '.COM;.EXE;.BAT;.CMD' }],
+  ['standard-full-modules-file', { ...standard, PATH: systemPath, PSModulePath: process.env.PSModulePath, PATHEXT: '.COM;.EXE;.BAT;.CMD' }],
+  ...process.env.PSModulePath.split(';').filter(Boolean).map((path, index) => [`module-${index}`, {
+    ...standard, PATH: systemPath, PSModulePath: path, PATHEXT: '.COM;.EXE;.BAT;.CMD',
+  }]),
   ['scrubbed-file', safeFull],
 ]) {
   const start = Date.now();
