@@ -33,6 +33,13 @@ test('native card starts a hidden PowerShell host, refreshes through Node, and c
   const removed = [];
   let refreshes = 0;
   const manualValues = [];
+  const environment = {
+    sYsTeMrOoT:'C:/Windows', WINDIR:'C:/Windows', TEMP:'C:/Temp', tmp:'C:/Tmp',
+    UserProfile:'C:/Users/test', localappdata:'C:/Users/test/AppData/Local',
+    RESET_RADAR_API_KEY:'test-only-key', reset_radar_api_key_file:'C:/private/member-key',
+    OPENAI_API_KEY:'private-openai-test-key', NODE_OPTIONS:'--require C:/private/inject.cjs',
+    PATH:'C:/private/bin', PSModulePath:'C:/private/modules',
+  };
   class Child extends EventEmitter { kill() { this.killed = true; return true; } }
   class Data {
     terminal = false;
@@ -40,7 +47,7 @@ test('native card starts a hidden PowerShell host, refreshes through Node, and c
     payload() { return {status:'ready',report:{personalProbability:25,baseProbability:25,weeklyWindows:[]}}; }
   }
   const result = await runWindowsOverlay({
-    platform:'win32', signal:controller.signal, sessionId:'test-session', directory:'C:/state', Data,
+    platform:'win32', environment, signal:controller.signal, sessionId:'test-session', directory:'C:/state', Data,
     load:async () => ({apiKey:'test-only-key',apiBase:'https://example.test'}),
     stat:async () => ({isFile:() => true,isSymbolicLink:() => false}),
     write:async (path,content) => writes.push({path,content}),
@@ -49,6 +56,14 @@ test('native card starts a hidden PowerShell host, refreshes through Node, and c
     spawnImpl:(_file,args,options) => {
       assert.deepEqual(args.slice(0,7),['-NoProfile','-NonInteractive','-STA','-ExecutionPolicy','Bypass','-File',args[6]]);
       assert.equal(options.windowsHide,true);
+      assert.deepEqual(options.env, {
+        SystemRoot:'C:/Windows', windir:'C:/Windows', TEMP:'C:/Temp', TMP:'C:/Tmp',
+        USERPROFILE:'C:/Users/test', LOCALAPPDATA:'C:/Users/test/AppData/Local',
+      });
+      const childInput = JSON.stringify({args,env:options.env});
+      for (const secret of ['test-only-key','C:/private/member-key','private-openai-test-key']) {
+        assert.equal(childInput.includes(secret),false);
+      }
       const child = new Child(); queueMicrotask(() => child.emit('spawn')); return child;
     },
     sleep:async () => controller.abort(),

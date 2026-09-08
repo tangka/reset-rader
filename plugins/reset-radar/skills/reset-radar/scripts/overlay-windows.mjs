@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { loadConfiguration, readPrivateFile, stateDirectory, writePrivateFile } from './configuration.mjs';
 import { OverlayData } from './overlay-data.mjs';
+import { windowsSystemEnvironment } from './windows-environment.mjs';
 
 const scriptPath = fileURLToPath(new URL('./overlay-windows.ps1', import.meta.url));
 
@@ -55,7 +56,7 @@ export async function takeRefreshCommand(path, { read, remove }) {
 }
 
 function windowsPowerShell(environment = process.env) {
-  const root = environment.SystemRoot || environment.WINDIR;
+  const root = environment.SystemRoot || environment.windir;
   return root ? join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe') : 'powershell.exe';
 }
 
@@ -84,10 +85,11 @@ export async function runWindowsOverlay({ environment = process.env, platform = 
   let firstRefresh = true;
   try {
     await write(paths.statePath, JSON.stringify(windowsPayload(data)));
-    child = spawnImpl(windowsPowerShell(environment), [
+    const rendererEnvironment = windowsSystemEnvironment(environment);
+    child = spawnImpl(windowsPowerShell(rendererEnvironment), [
       '-NoProfile', '-NonInteractive', '-STA', '-ExecutionPolicy', 'Bypass', '-File', scriptPath,
       '-StatePath', paths.statePath, '-CommandPath', paths.commandPath,
-    ], { windowsHide: true, stdio: ['ignore', 'ignore', 'ignore'], shell: false });
+    ], { env: rendererEnvironment, windowsHide: true, stdio: ['ignore', 'ignore', 'ignore'], shell: false });
     child.once('exit', () => controller.abort());
     try { await once(child, 'spawn'); }
     catch { throw new Error('Windows PowerShell could not start the Reset Radar card.'); }
