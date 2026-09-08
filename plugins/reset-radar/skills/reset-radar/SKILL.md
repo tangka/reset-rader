@@ -19,7 +19,7 @@ Without a floating card, ask the user to configure locally without putting the K
 pbpaste | node scripts/reset-radar.mjs configure --key-stdin
 ```
 
-Explicit configuration saves only the Key in `~/.config/reset-radar/api-key`, owner-only mode 600, outside the plugin and repository. This works in later Codex tasks without relying on a shell export. `RESET_RADAR_API_KEY_FILE` can select another owner-only file. Never print, log, commit, or place the Key in an automation prompt. Do not inspect full environments, clipboard, shell history, or Codex auth files. Keep the official API base; override `RESET_RADAR_API_BASE` only when the user explicitly supplies a trusted self-hosted endpoint.
+Explicit configuration saves only the Key outside the plugin and repository: `~/.config/reset-radar/api-key`, owner-only mode 600 on macOS/Linux, or `%LOCALAPPDATA%\\reset-radar\\api-key` on Windows. This works in later Codex tasks without relying on a shell export. `RESET_RADAR_API_KEY_FILE` can select another private file. Never print, log, commit, or place the Key in an automation prompt. Do not inspect full environments, clipboard, shell history, or Codex auth files. Keep the official API base; override `RESET_RADAR_API_BASE` only when the user explicitly supplies a trusted self-hosted endpoint.
 
 ## Query data
 
@@ -69,9 +69,9 @@ node scripts/reset-radar.mjs watch --threshold 80
 
 It polls serially every 10 minutes, prints structured results, and stops on Ctrl+C. It is not a background push service and does not guarantee notifications after its terminal closes. Never say it is scheduled when no automation has actually been created.
 
-## Optional in-Codex floating card (macOS, unofficial)
+## Optional in-Codex floating card (macOS only, unofficial)
 
-Use this mode only when the user asks to show/open the floating radar. It injects one isolated card into the **Codex main window**, not a system floating window or Pets renderer. It does not modify the installed app, themes, messages, or profile. Never enable it implicitly during ordinary queries.
+Use this mode only when the user asks to show/open the floating radar on macOS. It injects one isolated card into the **Codex main window**, not a system floating window or Pets renderer. It does not modify the installed app, themes, messages, or profile. Never enable it implicitly during ordinary queries. On Windows and Linux, state that regular queries and monitoring are supported but this nonofficial card is unavailable.
 
 1. Run `node scripts/reset-radar.mjs overlay doctor`. This inspects listeners owned by the installed Codex desktop and checks only a loopback CDP main page. It needs no API Key. If multiple windows are listed, ask which target; use `--target <id>` (and `--port <port>` when needed), never choose one silently.
 2. If a compatible endpoint exists, run `node scripts/reset-radar.mjs overlay start` with the selected port/target. Keep this process running; it is the data bridge, not a model heartbeat. Automatic reads occur at most every 10 minutes and the same weekly inputs are recalculated locally. The refresh icon left of “−” lets the user immediately read radar and local weekly quota; concurrent clicks are coalesced, not queued. Manual refresh still respects the persisted server 429 retry deadline, even after reopening. Do not drive the button in an automated loop. Node sends only display fields to the renderer, including general Codex weekly usage for the used/remaining percentages, never the saved Key or account identity. Usage stays local and is never uploaded to the radar API. Unknown or expired usage is unavailable, not zero; remaining usage is clamped at zero if used exceeds 100%. The user's explicit password-form submission is consumed once by the private Node bridge and saved through the existing owner-only configuration helper; do not log or inspect that private result. Missing Key opens the form automatically. Do not create a separate automation.

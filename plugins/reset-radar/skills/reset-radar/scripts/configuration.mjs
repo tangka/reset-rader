@@ -1,21 +1,33 @@
 import { constants } from 'node:fs';
-import { mkdir, open, rename, unlink } from 'node:fs/promises';
+import { lstat, mkdir, open, rename, unlink } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { API_KEY_PATTERN, readConfiguration } from './api-client.mjs';
 
 export function stateDirectory(environment = process.env) {
-  return resolve(environment.RESET_RADAR_STATE_DIR || join(homedir(), '.config', 'reset-radar'));
+  if (environment.RESET_RADAR_STATE_DIR) return resolve(environment.RESET_RADAR_STATE_DIR);
+  const root = process.platform === 'win32'
+    ? environment.LOCALAPPDATA || join(homedir(), 'AppData', 'Local')
+    : join(homedir(), '.config');
+  return resolve(join(root, 'reset-radar'));
 }
 
 export async function readPrivateFile(path) {
   let handle;
   try {
+    const entry = await lstat(path);
+    if (!entry.isFile() || entry.isSymbolicLink()) {
+      throw new Error('Private radar file must be a regular file.');
+    }
     handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
     const stat = await handle.stat();
-    if (!stat.isFile() || stat.size > 65536 || (stat.mode & 0o077)
-        || (process.getuid && stat.uid !== process.getuid())) {
+    // Windows ACLs are not represented by stat.mode. The default state directory
+    // is inside the current user's LocalAppData profile, so enforce the POSIX
+    // mode/uid invariant only on platforms where Node exposes it reliably.
+    const unsafePermissions = process.platform !== 'win32' && ((stat.mode & 0o077)
+      || (process.getuid && stat.uid !== process.getuid()));
+    if (!stat.isFile() || stat.size > 65536 || unsafePermissions) {
       throw new Error('Private radar file must be owner-only (chmod 600).');
     }
     return await handle.readFile('utf8');
